@@ -39,10 +39,10 @@ are running on Linux or Mac, you may wish to place it in a directory that is
 on your path.
 
 The source code is available from the
-[GitHub repository](https://github.com/mfncooper/pyham_paracon):
+[GitHub repository](https://github.com/mfncooper/paracon):
 
 ```console
-$ git clone https://github.com/mfncooper/pyham_paracon
+$ git clone https://github.com/mfncooper/paracon
 ```
 
 ## Running
