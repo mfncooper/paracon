@@ -1,0 +1,25 @@
+[Setup]
+port = 8000
+
+[Connect]
+port = 0
+connect_as = 
+connect_to = 
+connect_via = 
+
+[Unproto]
+port = 0
+source = 
+destination = ID
+via = 
+
+[Monitor]
+port = -1
+color = true
+netrom = true
+
+[Logging]
+logdir = .
+level = error
+console = none
+engine = false

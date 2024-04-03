@@ -1,0 +1,9 @@
+__pycache__/
+.tox/
+docs/_build/
+dist/
+_zipapp/
+paracon*.pyz
+paracon.cfg
+*.log
+.python-version
