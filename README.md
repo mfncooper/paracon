@@ -30,7 +30,7 @@ Key features of Paracon include:
 Download the latest release from GitHub.
 
 1. Go to the
-   [latest release](https://github.com/mfncooper/pyham_paracon/releases/latest)
+   [latest release](https://github.com/mfncooper/paracon/releases/latest)
     page.
 2. In the *Assets* section, click on the Paracon `.pyz` file to download it.
 
@@ -79,7 +79,7 @@ $ paracon_<version>.pyz
 ## Documentation
 
 Full documentation is available
-[online](https://pyham_paracon.readthedocs.io/en/latest/)
+[online](https://pyham-paracon.readthedocs.io/en/latest/)
 and includes the following:
 
 <dl>

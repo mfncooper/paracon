@@ -34,7 +34,7 @@ Installation
 Download the latest release from GitHub.
 
 #. Go to the
-   `latest release <https://github.com/mfncooper/pyham_paracon/releases/latest>`__
+   `latest release <https://github.com/mfncooper/paracon/releases/latest>`__
    page.
 #. In the *Assets* section, click on the Paracon ``.pyz`` file to download it.
 
