@@ -88,6 +88,19 @@ and includes the following:
 from starting it the first time to using connected mode sessions and more.</dd>
 </dl>
 
+## Discussion
+
+If you have questions about how to use this application, the documentation
+should be your first point of reference. If the User Guide doesn't answer your
+questions, or you'd simply like to share your experiences or generally discuss
+this application, please join the community on the
+[Paracon Discussions](https://github.com/mfncooper/paracon/discussions)
+forum.
+
+Note that the GitHub Issues tracker should be used only for reporting bugs or
+filing feature requests, and should not be used for questions or general
+discussion.
+
 ## References
 
 <dl>
