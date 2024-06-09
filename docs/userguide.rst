@@ -21,12 +21,18 @@ Depending upon your particular system, you may need to substitute ``python``
 for ``python3`` in the above command line, and of course backslash for slash
 if you are running on Windows.
 
-On Linux and Mac, the pyz file is directly executable, so that if you have
-placed it in a directory that is on your path, you can simply type:
+On Linux and Mac, you can make the file directly executable, so that if you
+have placed it in a directory that is on your path, you can simply type:
 
 .. code-block:: console
 
     $ paracon_<version>.pyz
+
+To enable this, you will need to set the necessary file permission using:
+
+.. code-block:: console
+
+    $ chmod u+x paracon_<version>.pyz
 
 Paracon will create its configuration and log files in your *current directory*
 when you start it, not the directory in which the .pyz file is located, so you
