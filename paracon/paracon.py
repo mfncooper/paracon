@@ -457,8 +457,20 @@ class ConnectionPanel(urwid.WidgetWrap):
 
     def _connect(self):
         dlg = ConnectDialog()
-        urwid.connect_signal(dlg, 'connect_info', self._make_connection)
+        urwid.connect_signal(dlg, 'connect_info', self._save_and_connect)
         dlg.show(app._loop)
+
+    def _save_and_connect(self, info):
+        self._change_config(info)
+        self._make_connection(info)
+
+    def _change_config(self, info):
+        config.set('Connect', 'connect_to', info.connect_to)
+        config.set('Connect', 'connect_via', info.connect_via)
+        config.set('Connect', 'connect_as', info.connect_as)
+        config.set_int('Connect', 'port',
+                       app.ports.port_for_index(info.port[0]))
+        config.save_config()
 
     def _make_connection(self, info):
         registered = app.server.register_callsign(info.connect_as)
