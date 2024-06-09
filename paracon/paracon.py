@@ -129,6 +129,51 @@ class SizeListBox(urwid.ListBox):
         return super().render(size, focus)
 
 
+class Ports:
+    """
+    Per the AGWPE spec, port information comes from the server in the form
+    "Portn xxxxxxx" for each port, where 'n' is the port number, and 'xxxxxxx'
+    is the description. Some servers, notably Direwolf, may not use consecutive
+    port numbers, so we need to parse the port numbers from these strings, and
+    map between port numbers and indexes into the list of available ports.
+
+    While known servers (Direwolf, ldsped, AGWPE) adhere to the string format
+    in the spec, we need to allow for the possibility that some other server
+    does not. In this case, the only thing we can do is revert to using the
+    position in the list as the port number.
+
+    Note that the port numbers reflected here are the API port numbers,
+    which are 1 lower than the display port numbers, per the AGWPE spec.
+    (That is, "Port1 ..." corresponds to API port 0, etc.)
+    """
+    def __init__(self, port_info):
+        try:
+            # Parse spec-defined "Portn xxxxxxx"
+            port_nums = [int(s.split()[0][4:]) - 1 for s in port_info]
+        except ValueError:
+            # Fall back to using index as port number
+            port_nums = [i for i, s in enumerate(port_info)]
+        self._port_info = port_info
+        self._port_nums = port_nums
+
+    @property
+    def port_info(self):
+        return self._port_info
+
+    def valid_port(self, port_num):
+        return (port_num if port_num in self._port_nums
+                else self._port_nums[0] if self._port_nums
+                else None)
+
+    def index_for_port(self, port_num):
+        return (self._port_nums.index(port_num) if port_num in self._port_nums
+                else 0)
+
+    def port_for_index(self, ix):
+        return (self._port_nums[ix] if ix < len(self._port_nums)
+                else self._port_nums[0])
+
+
 # =============================================================================
 # Monitor
 # =============================================================================
@@ -296,11 +341,10 @@ class UnprotoScreen(urwid.WidgetWrap):
         dst = config.get('Unproto', 'destination')
         via = config.get('Unproto', 'via')
         port = config.get_int('Unproto', 'port')
+        if port is not None:
+            port = app.ports.valid_port(port)
         if port is None:
-            port = config.get_int('Setup', 'port')
-        avail_ports = app.server.ports
-        if port >= len(avail_ports):
-            port = 0
+            port = app.ports.port_for_index(0)
         if not self._valid_config(src, dst, via):
             self._mon.add_line(('unproto_error', 'Unproto config is invalid'))
             return
@@ -427,9 +471,10 @@ class ConnectionPanel(urwid.WidgetWrap):
                 'Your connection may be configured as readonly.'))
             return
         self._menubar.menu.enable(self.MenuCommand.CONNECT, False)
+        port = app.ports.port_for_index(info.port[0])
         vias = info.connect_via.split() if info.connect_via else None
         conn = app.server.open_connection(
-            info.port[0], info.connect_as, info.connect_to, vias)
+            port, info.connect_as, info.connect_to, vias)
         self._connection = conn
         self._periodic_key = app.start_periodic(1.0, self._update_from_queue)
         self.add_line('Connecting to {} ...'.format(info.connect_to))
@@ -727,6 +772,7 @@ class Application(metaclass=urwid.MetaSignals):
         self._loop = None
         self._last_mouse_press = 0
         self._server = None
+        self._ports = None
         self._debug_engine = False
         self._configure_logging()
 
@@ -776,6 +822,10 @@ class Application(metaclass=urwid.MetaSignals):
     @property
     def server(self):
         return self._server
+
+    @property
+    def ports(self):
+        return self._ports
 
     def _create_widgets(self):
         self._topbar = urwidx.MenuBar(self.MenuCommand)
@@ -843,6 +893,7 @@ class Application(metaclass=urwid.MetaSignals):
         if restart:
             self._server.stop()
             self._server = None
+            self._ports = None
             self._loop.set_alarm_in(0, self._start_server)
 
     def _show_help(self):
@@ -909,6 +960,7 @@ class Application(metaclass=urwid.MetaSignals):
             raise urwid.ExitMainLoop()
         server.enable_debug(self._debug_engine)
         self._server = server
+        self._ports = Ports(server.ports)
         self._set_connected('{}:{}'.format(
             config.get('Setup', 'host'), config.get_int('Setup', 'port')))
         self._server.register_callsign(config.get('Setup', 'callsign'))
@@ -919,6 +971,7 @@ class Application(metaclass=urwid.MetaSignals):
         urwid.emit_signal(self, 'server_stopping', None)
         self._server.stop()
         self._server = None
+        self._ports = None
         # Ask the user what they want to do now
         dlg = MessageBox(
             "Server Error",
@@ -1242,19 +1295,24 @@ class ConnectDialog(urwidx.FormDialog):
             connect_to = self._info.connect_to
             connect_via = self._info.connect_via
             connect_as = self._info.connect_as
-            port = self._info.port[0]
+            port_ix = self._info.port[0]
         else:
             connect_to = config.get('Connect', 'connect_to') or ''
             connect_via = config.get('Connect', 'connect_via') or ''
             connect_as = (config.get('Connect', 'connect_as')
                           or config.get('Setup', 'callsign')
                           or '')
-            port = config.get_int('Connect', 'port') or 0
+            port = config.get_int('Connect', 'port')
+            # Ensure a valid index into list of ports
+            if port is not None:
+                port = app.ports.valid_port(port)
+            if port is not None:
+                port_ix = app.ports.index_for_port(port)
+            else:
+                port_ix = 0
         # Vias are saved with spaces, but displayed with commas
         connect_via = ','.join(connect_via.split())
-        avail_ports = app.server.ports
-        if port >= len(avail_ports):
-            port = 0
+        avail_ports = app.ports.port_info
         self.add_group('dest', "Connect To")
         self.add_edit_str_field(
             'connect_to', 'Call', group='dest', value=connect_to,
@@ -1267,7 +1325,7 @@ class ConnectDialog(urwidx.FormDialog):
             'connect_as', 'My call', group='source', value=connect_as,
             filter=callsign_filter)
         self.add_dropdown_field(
-            'port', '   Port', avail_ports, port, group='source')
+            'port', '   Port', avail_ports, port_ix, group='source')
 
     def validate(self):
         connect_to = self.get_edit_str_value('connect_to')
