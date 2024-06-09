@@ -394,6 +394,8 @@ class UnprotoScreen(urwid.WidgetWrap):
         config.set('Unproto', 'source', info.src)
         config.set('Unproto', 'destination', info.dst)
         config.set('Unproto', 'via', info.via)
+        config.set_int('Unproto', 'port',
+                       app.ports.port_for_index(info.port[0]))
         config.save_config()
         self._set_info()
 
@@ -1377,6 +1379,7 @@ class UnprotoDialog(urwidx.FormDialog):
         src: str
         dst: str
         via: str
+        port: tuple
 
     def __init__(self, info=None):
         self._info = info
@@ -1387,20 +1390,38 @@ class UnprotoDialog(urwidx.FormDialog):
             src = self._info.src
             dst = self._info.dst
             via = self._info.via
+            port_ix = self._info.port[0]
         else:
             src = (config.get('Unproto', 'source')
                    or config.get('Setup', 'callsign')
                    or '')
             dst = config.get('Unproto', 'destination') or ''
             via = config.get('Unproto', 'via') or ''
+
+            port = config.get_int('Unproto', 'port')
+            # Ensure a valid index into list of ports
+            if port is not None:
+                port = app.ports.valid_port(port)
+            if port is not None:
+                port_ix = app.ports.index_for_port(port)
+            else:
+                port_ix = 0
         # Vias are saved with spaces, but displayed with commas
         via = ','.join(via.split())
+        avail_ports = app.ports.port_info
+        self.add_group('dest', "Send To")
         self.add_edit_str_field(
-            'src', '     Source', value=src, filter=callsign_filter)
+            'dst', 'Destination', group='dest', value=dst,
+            filter=callsign_filter)
         self.add_edit_str_field(
-            'dst', 'Destination', value=dst, filter=callsign_filter)
+            'via', '        Via', group='dest', value=via,
+            filter=via_filter)
+        self.add_group('source', "Send Using")
         self.add_edit_str_field(
-            'via', '        Via', value=via, filter=via_filter)
+            'src', 'Source', group='source', value=src,
+            filter=callsign_filter)
+        self.add_dropdown_field(
+            'port', '  Port', avail_ports, port_ix, group='source')
 
     def validate(self):
         src = self.get_edit_str_value('src')
@@ -1425,10 +1446,11 @@ class UnprotoDialog(urwidx.FormDialog):
         src = self.get_edit_str_value('src').upper()
         dst = self.get_edit_str_value('dst').upper()
         via = self.get_edit_str_value('via').upper()
+        port = self.get_dropdown_value('port')
         # The user may have used comma separators or something else, but we
         # standardize here on spaces.
         vias = re.findall("[A-Z0-9-]+", via)
-        info = self.UnprotoInfo(src, dst, ' '.join(vias))
+        info = self.UnprotoInfo(src, dst, ' '.join(vias), port)
         urwid.emit_signal(self, 'unproto_info', info)
 
 
