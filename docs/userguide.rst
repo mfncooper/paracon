@@ -100,7 +100,7 @@ the callsign you entered at Setup time, but you can, of course, change it if
 desired.
 
 The 'Port' field is a drop-down list of the available AGWPE ports on your
-server. Click on the down-arrow to open the list. In most cases, you will have
+server. Click on the down-arrow to open the list. In many cases, you will have
 only one available port, and can leave this field as it is. If your server
 provides multiple ports, you can select the appropriate one here.
 
@@ -163,15 +163,20 @@ up the Unproto dialog.
 .. image:: /images/unproto_cfg.png
    :alt: Unproto dialog
 
-The 'Source' field will initially show the callsign you entered at Setup time,
-but you can, of course, change it if desired.
-
 The 'Destination' field will initially show 'ID', but you should change this
 depending upon your intended use of Unproto mode. (For example, if you are
-participating in a net, it would be the callsign being used for that net.)
+participating in a net, it might be the callsign being used for that net.)
 
 As with the Connect dialog, if you need to enter multiple ‘via’ values,
 separate them with commas.
+
+The 'Source' field will initially show the callsign you entered at Setup time,
+but you can, of course, change it if desired.
+
+The 'Port' field is a drop-down list of the available AGWPE ports on your
+server. Click on the down-arrow to open the list. In many cases, you will have
+only one available port, and can leave this field as it is. If your server
+provides multiple ports, you can select the appropriate one here.
 
 Settings
 --------
