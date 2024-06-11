@@ -6,7 +6,7 @@
 # =============================================================================
 
 __author__ = 'Martin F N Cooper'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 from enum import Enum
 import logging
