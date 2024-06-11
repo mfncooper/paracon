@@ -84,7 +84,7 @@ To enable this, you will need to set the necessary file permission using:
 ## Documentation
 
 Full documentation is available
-[online](https://pyham-paracon.readthedocs.io/en/latest/)
+[online](https://paracon.readthedocs.io/en/latest/)
 and includes the following:
 
 <dl>
