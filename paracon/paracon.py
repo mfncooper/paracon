@@ -72,6 +72,7 @@ palette = [
     # Monitor
     ('monitor_text', 'white', 'black'),
     ('monitor_call', 'light green', 'black'),
+    ('monitor_received', 'dark red', 'black'),
 
     # Connections
     ('connection_inbound', 'light cyan', 'black'),
@@ -207,7 +208,11 @@ def _color_info_line(text):
         vias = m['call_via'].split(',')
         line.append(('monitor_text', " Via "))
         for via in vias:
-            line.append(('monitor_call', via))
+            if via.endswith("*"):
+                via_color = 'monitor_received'
+            else:
+                via_color = 'monitor_call'
+            line.append((via_color, via))
             line.append(('monitor_text', ','))
         line = line[:-1]
     line.append(
