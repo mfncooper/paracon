@@ -8,6 +8,7 @@
 __author__ = 'Martin F N Cooper'
 __version__ = '1.1.0'
 
+import codecs
 from enum import Enum
 import logging
 import re
@@ -591,7 +592,15 @@ class ConnectionPanel(urwid.WidgetWrap):
 
     def _gather_lines(self, data):
         if not isinstance(data, str):
-            data = data.decode('utf-8')
+            for encoding in config.get('Setup', 'encoding').split(','):
+                try:
+                    data = data.decode(encoding.strip())
+                except UnicodeError:
+                    continue
+                else:
+                    break
+            else:
+                data = data.decode('utf-8', 'replace')
         parts = data.split('\r')
         if len(self._line_remains):
             parts[0] = self._line_remains + parts[0]
@@ -889,11 +898,12 @@ class Application(metaclass=urwid.MetaSignals):
         host = config.get('Setup', 'host')
         port = config.get_int('Setup', 'port')
         call = config.get('Setup', 'callsign')
+        encoding = config.get('Setup', 'encoding')
         changed = False
         restart = False
         # If callsign changed, we don't immediately set the new value anywhere,
-        # but we do need to save it.
-        if setup_info.call != call:
+        # but we do need to save it. Same for the encoding.
+        if setup_info.call != call or setup_info.encoding != encoding:
             changed = True
         # If host or port changed, we need to restart the server
         if setup_info.host != host or setup_info.port != port:
@@ -903,6 +913,7 @@ class Application(metaclass=urwid.MetaSignals):
             config.set('Setup', 'host', setup_info.host)
             config.set_int('Setup', 'port', setup_info.port)
             config.set('Setup', 'callsign', setup_info.call)
+            config.set('Setup', 'encoding', setup_info.encoding)
             config.save_config()
         if restart:
             self._server.stop()
@@ -1107,7 +1118,8 @@ class ServerStartup:
         host = config.get('Setup', 'host')
         port = config.get_int('Setup', 'port')
         call = config.get('Setup', 'callsign')
-        self._info = SetupDialog.SetupInfo(host, port, call)
+        encoding = config.get('Setup', 'encoding')
+        self._info = SetupDialog.SetupInfo(host, port, call, encoding)
 
     def write_config(self):
         """
@@ -1117,6 +1129,7 @@ class ServerStartup:
         config.set('Setup', 'host', self._info.host)
         config.set_int('Setup', 'port', self._info.port)
         config.set('Setup', 'callsign', self._info.call)
+        config.set('Setup', 'encoding', self._info.encoding)
         config.save_config()
 
     def ask_for_info(self):
@@ -1249,6 +1262,7 @@ class SetupDialog(urwidx.FormDialog):
         host: str
         port: int
         call: str
+        encoding: str
 
     def __init__(self, info=None):
         self._info = info
@@ -1259,10 +1273,12 @@ class SetupDialog(urwidx.FormDialog):
             host = self._info.host
             port = self._info.port
             call = self._info.call
+            encoding = self._info.encoding
         else:
             host = config.get('Setup', 'host') or ''
             port = config.get_int('Setup', 'port') or 0
             call = config.get('Setup', 'callsign') or ''
+            encoding = config.get('Setup', 'encoding') or 'utf-8,cp437'
         self.add_group('server', "AGWPE Server")
         self.add_edit_str_field(
             'host', 'Host', group='server', value=host)
@@ -1272,22 +1288,32 @@ class SetupDialog(urwidx.FormDialog):
         self.add_edit_str_field(
             'call', 'Callsign', group='callsign', value=call,
             filter=callsign_filter)
+        self.add_group('encoding', 'Text encoding')
+        self.add_edit_str_field(
+            'encoding', 'Encoding', group='encoding', value=encoding)
 
     def validate(self):
         host = self.get_edit_str_value('host')
         port = self.get_edit_int_value('port')
         call = self.get_edit_str_value('call')
-        if not (host and port and call):
+        encoding = self.get_edit_str_value('encoding')
+        if not (host and port and call and encoding):
             return "All fields are required"
         if not ax25.Address.valid_call(call):
             return "Invalid callsign"
-        return None
+        try: 
+            for encoding in encoding.split(','):
+                encoding = encoding.strip()
+                codecs.lookup(encoding)
+        except (LookupError, ValueError):
+            return f"Invalid encoding '{encoding}'"
 
     def save(self):
         host = self.get_edit_str_value('host')
         port = self.get_edit_int_value('port')
         call = self.get_edit_str_value('call').upper()
-        info = self.SetupInfo(host, port, call)
+        encoding = self.get_edit_str_value('encoding')
+        info = self.SetupInfo(host, port, call, encoding)
         urwid.emit_signal(self, 'setup_info', info)
 
 

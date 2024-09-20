@@ -1,5 +1,6 @@
 [Setup]
 port = 8000
+encoding = utf-8,cp437
 
 [Connect]
 port = 0
