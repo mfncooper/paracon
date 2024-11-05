@@ -8,17 +8,13 @@ rm -rf $APPDIR
 mkdir -p $APPDIR
 
 # Application sources
-cp -p paracon/*.py $APPDIR/
-
-# Default config
-mkdir -p $APPDIR/paracon_config
-cp -p paracon/*.def $APPDIR/paracon_config/
-# Create empty file to make it a module
-touch $APPDIR/paracon_config/__init__.py
+mkdir $APPDIR/paracon
+cp -p paracon/*.py $APPDIR/paracon
+cp -p paracon/paracon.def $APPDIR/paracon
 
 # Install dependencies
-python -m pip install -r requirements-zipapp.txt --target $APPDIR/
+python3 -m pip install -r requirements-zipapp.txt --target $APPDIR/
 
 # Build the zipapp and make it executable
-python -m zipapp $APPDIR/ -p '/usr/bin/env python3' -o paracon_${VER}.pyz -m "paracon:run"
+python3 -m zipapp $APPDIR/ -p '/usr/bin/env python3' -o paracon_${VER}.pyz -m "paracon.paracon:run"
 chmod a+x paracon_${VER}.pyz

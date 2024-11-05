@@ -18,9 +18,9 @@ import urwid
 
 import ax25
 import ax25.netrom
-import config
-import pserver
-import urwidx
+import paracon.config as config
+import paracon.pserver as pserver
+import paracon.urwidx as urwidx
 
 IS_WINDOWS = sys.platform == "win32"
 
@@ -1464,7 +1464,7 @@ class UnprotoDialog(urwidx.FormDialog):
 # use when the application is packaged as a zipapp. The usual __main__ form
 # applies when running the code outside of a zipapp, during development.
 
-config = config.Config('paracon', 'paracon_config')
+config = config.Config('paracon', package='paracon')
 config.load_config()
 app = Application()
 

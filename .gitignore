@@ -1,4 +1,6 @@
 __pycache__/
+build/
+paracon.egg-info/
 .tox/
 docs/_build/
 dist/
