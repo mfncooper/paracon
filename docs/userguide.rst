@@ -191,20 +191,20 @@ Paracon will remember the information you enter in the Setup, Connect and
 Unproto Dest/Src dialogs. When you bring up one of these dialogs, it will
 initially show whatever values you had last entered.
 
-These settings are saved in a text file named `paracon.cfg` in your current
-directory when you started Paracon. Should you get into a confused state at
+These settings are saved in a text file named `paracon/paracon.cfg` in your
+user's configuration directory. You can see the exact path Paracon uses by using the `--help` option. Should you get into a confused state at
 any time, you may simply delete this file. The next time you start Paracon,
 it will start fresh with the Setup dialog.
 
 If you need to maintain multiple Paracon configurations - perhaps different
 setups for different servers, for example - you can do so simply by starting
-Paracon from a different directory for each configuration.
+Paracon with the `-c` option.
 
 Logging
 -------
 
-Paracon maintains a number of log files in the same directory as the Paracon
-.pyz file.
+Paracon maintains a number of log files in your user's log directory. You can
+see exactly what this log directory is by using the `--help` option.
 
 paracon.log
    Contains information about any errors that have occurred during the
@@ -218,3 +218,5 @@ monitor.log
    Contains the exchange that occurs during a connection between the two
    stations of the filename. This is the same information that you see in the
    connection tab during a connected-mode session.
+
+You can specify an alternate directory for logging with the `--log-dir` option.
