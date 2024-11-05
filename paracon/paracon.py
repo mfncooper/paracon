@@ -10,6 +10,7 @@ __version__ = '1.1.0'
 
 from enum import Enum
 import logging
+import pathlib
 import re
 import sys
 import time
@@ -21,6 +22,7 @@ import ax25.netrom
 import paracon.config as config
 import paracon.pserver as pserver
 import paracon.urwidx as urwidx
+import platformdirs
 
 IS_WINDOWS = sys.platform == "win32"
 
@@ -222,7 +224,7 @@ class MonitorPanel(urwid.WidgetWrap):
         self._queue = None
         self._periodic_key = None
         super().__init__(self._list)
-        self._log.set_logfile('monitor.log')
+        self._log.set_logfile(app.log_path('monitor.log'))
         urwid.connect_signal(app, 'server_started', self._start_monitor)
         urwid.connect_signal(app, 'server_stopping', self._stop_monitor)
 
@@ -551,8 +553,8 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._timer_key = app.start_periodic(1.0, self._set_info)
                     conn = self._connection
                     self._panel_changed_callback(self, conn)
-                    self._log.set_logfile(
-                        '{}_{}.log'.format(conn.call_from, conn.call_to))
+                    self._log.set_logfile(app.log_path(
+                        '{}_{}.log'.format(conn.call_from, conn.call_to)))
                     self.add_line('Connected to {}'.format(conn.call_to))
                     self._menubar.menu.enable(
                         self.MenuCommand.DISCONNECT, True)
@@ -790,6 +792,9 @@ class Application(metaclass=urwid.MetaSignals):
         self._debug_engine = False
         self._configure_logging()
 
+    def log_path(self, name):
+        return pathlib.Path(platformdirs.user_log_dir('paracon'), name)
+
     def _configure_logging(self):
         # Read configured settings
         level = self._get_logging_level('level') or logging.CRITICAL
@@ -799,10 +804,14 @@ class Application(metaclass=urwid.MetaSignals):
         # We'll be configuring the PE logger as well as our own
         logger_pe = logging.getLogger('pe')
 
+        # Get our log file path and create the directory if needed
+        logpath = self.log_path('paracon.log')
+        logpath.parent.mkdir(parents=True, exist_ok=True)
+
         # Create a file-based handler with format spec
         fmt = ("{asctime} [{name:11s}:{lineno:-4d}] "
                "[{levelname:7s}] {message}")
-        fh = logging.FileHandler('paracon.log')
+        fh = logging.FileHandler(logpath)
         fh.setFormatter(logging.Formatter(fmt, '%Y-%m-%d %H:%M:%S', '{'))
 
         # Add to both loggers

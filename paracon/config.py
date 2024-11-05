@@ -19,10 +19,16 @@ import configparser
 import importlib.resources
 import pathlib
 
+import platformdirs
+
 
 class Config:
     def __init__(self, fileroot, package=None):
         self.fileroot = fileroot
+        self.filepath = pathlib.Path(
+            platformdirs.user_config_dir(fileroot),
+            fileroot + '.cfg',
+        )
         self.package = package
         self.default_cfg = None
         self.user_cfg = None
@@ -37,11 +43,15 @@ class Config:
                 self.package, self.fileroot + '.def')
             self.default_cfg.read_string(data)
         else:
-            self.default_cfg.read(self.fileroot + '.def')
+            defaults_path = pathlib.Path(
+                platformdirs.user_config_dir(self.fileroot),
+                self.fileroot + '.def',
+            )
+            self.default_cfg.read(defaults_path)
 
         self.user_cfg = configparser.ConfigParser()
-        if pathlib.Path(self.fileroot + '.cfg').exists():
-            self.user_cfg.read(self.fileroot + '.cfg')
+        if self.filepath.exists():
+            self.user_cfg.read(self.filepath)
         self.changed_sections = set()
 
     def save_config(self):
@@ -55,7 +65,8 @@ class Config:
                         and ucfg[section][key] == dcfg[section][key]):
                     ucfg.remove_option(section, key)
         # Save the updated user config
-        with open(self.fileroot + '.cfg', 'w') as f:
+        self.filepath.parent.mkdir(parents=True, exist_ok=True)
+        with self.filepath.open('w') as f:
             ucfg.write(f)
         self.notify_all()
         self.changed_sections = set()
