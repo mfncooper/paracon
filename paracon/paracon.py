@@ -8,6 +8,7 @@
 __author__ = 'Martin F N Cooper'
 __version__ = '1.1.0'
 
+import argparse
 from enum import Enum
 import logging
 import pathlib
@@ -790,12 +791,12 @@ class Application(metaclass=urwid.MetaSignals):
         self._server = None
         self._ports = None
         self._debug_engine = False
-        self._configure_logging()
+        self.log_root = platformdirs.user_log_dir('paracon')
 
     def log_path(self, name):
-        return pathlib.Path(platformdirs.user_log_dir('paracon'), name)
+        return pathlib.Path(self.log_root, name)
 
-    def _configure_logging(self):
+    def configure_logging(self, log_root=None):
         # Read configured settings
         level = self._get_logging_level('level') or logging.CRITICAL
         console = self._get_logging_level('console')
@@ -805,13 +806,14 @@ class Application(metaclass=urwid.MetaSignals):
         logger_pe = logging.getLogger('pe')
 
         # Get our log file path and create the directory if needed
-        logpath = self.log_path('paracon.log')
-        logpath.parent.mkdir(parents=True, exist_ok=True)
+        if log_root is not None:
+            self.log_root = pathlib.Path(log_root)
+        self.log_root.mkdir(parents=True, exist_ok=True)
 
         # Create a file-based handler with format spec
         fmt = ("{asctime} [{name:11s}:{lineno:-4d}] "
                "[{levelname:7s}] {message}")
-        fh = logging.FileHandler(logpath)
+        fh = logging.FileHandler(self.log_path('paracon.log'))
         fh.setFormatter(logging.Formatter(fmt, '%Y-%m-%d %H:%M:%S', '{'))
 
         # Add to both loggers
@@ -1474,11 +1476,33 @@ class UnprotoDialog(urwidx.FormDialog):
 # applies when running the code outside of a zipapp, during development.
 
 config = config.Config('paracon', package='paracon')
-config.load_config()
 app = Application()
 
 
 def run():
+    parser = argparse.ArgumentParser(
+        prog='paracon',
+        description='Packet Radio Console',
+        # show the defaults in --help
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument('-V', '--version',
+                        help='print version and exit', action='store_true')
+    parser.add_argument('-c', '--config',
+                        help='load the provided config file',
+                        metavar='FILE', default=config.filepath)
+    parser.add_argument('--log-dir',
+                        help='write logs to the given directory',
+                        metavar='DIR', default=app.log_root)
+
+    args = parser.parse_args()
+    if args.version:
+        print(__version__)
+        return
+
+    app.configure_logging(args.log_dir)
+    config.load_config(args.config)
     app.run()
 
 

@@ -36,7 +36,7 @@ class Config:
         self.changed_sections = set()
         self.load_config()
 
-    def load_config(self):
+    def load_config(self, filepath=None):
         self.default_cfg = configparser.ConfigParser()
         if self.package:
             data = importlib.resources.read_text(
@@ -48,6 +48,9 @@ class Config:
                 self.fileroot + '.def',
             )
             self.default_cfg.read(defaults_path)
+
+        if filepath is not None:
+            self.filepath = pathlib.Path(filepath)
 
         self.user_cfg = configparser.ConfigParser()
         if self.filepath.exists():
