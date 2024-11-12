@@ -824,9 +824,12 @@ class Application(metaclass=urwid.MetaSignals):
         self._debug_engine = engine
 
     def _get_logging_level(self, name):
-        level = config.get('Logging', name).upper()
-        level_val = logging.getLevelName(level)
-        return level_val if isinstance(level_val, int) else None
+        level = config.get('Logging', name)
+        if level is not None:
+            level = level.upper()
+            level_val = logging.getLevelName(level)
+            return level_val if isinstance(level_val, int) else None
+        return None
 
     @property
     def loop(self):
@@ -1464,7 +1467,7 @@ class UnprotoDialog(urwidx.FormDialog):
 # use when the application is packaged as a zipapp. The usual __main__ form
 # applies when running the code outside of a zipapp, during development.
 
-config = config.Config('paracon', 'paracon_config')
+config = config.Config('paracon_config')
 config.load_config()
 app = Application()
 
@@ -1475,3 +1478,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+    
