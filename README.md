@@ -81,6 +81,14 @@ To enable this, you will need to set the necessary file permission using:
     $ chmod u+x paracon_<version>.pyz
 ```
 
+## Libraries 
+
+pip install urwid
+
+pip install pyham_ax25
+
+pip install pyham_pe
+
 ## Documentation
 
 Full documentation is available
