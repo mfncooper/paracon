@@ -33,8 +33,7 @@ class Config:
     def load_config(self):
         self.default_cfg = configparser.ConfigParser()
         if self.package:
-            data = importlib.resources.read_text(
-                self.package, self.fileroot + '.def')
+            data = importlib.resources.read_text(self.package, self.fileroot + '.def')
             self.default_cfg.read_string(data)
         else:
             self.default_cfg.read(self.fileroot + '.def')
@@ -109,3 +108,4 @@ class Config:
             raise TypeError("option value must be bool")
         self.set(section, option, 'true' if value else 'false')
         self.changed_sections.add(section)
+        
