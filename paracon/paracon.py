@@ -543,6 +543,8 @@ class ConnectionPanel(urwid.WidgetWrap):
     def _update_from_queue(self, obj):
         queue = self._connection.event_queue
         result = True
+        first_message_saved = False  # Track if the first message has been saved
+
         while not queue.empty():
             (kind, data) = queue.get()
             if kind == 'status':
@@ -584,6 +586,10 @@ class ConnectionPanel(urwid.WidgetWrap):
                         self.MenuCommand.DISCONNECT, False)
                     result = False
             elif kind == 'data':
+                if not first_message_saved:  # Check if the first message is not saved
+                    with open('first_message.txt', 'w') as f:  # Save the first message to a file
+                        f.write(data.decode('utf-8'))  # Decode bytearray to str
+                    first_message_saved = True  # Mark the first message as saved
                 self._gather_lines(data)
             else:
                 logger.debug('Unknown queue entry: {}'.format(kind))
