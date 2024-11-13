@@ -422,6 +422,8 @@ class UnprotoScreen(urwid.WidgetWrap):
 
 class ConnectionPanel(urwid.WidgetWrap):
 
+    first_message_saved = False  # Class attribute to track if the first message has been saved
+
     class MenuCommand(Enum):
         CONNECT = 'Connect'
         DISCONNECT = 'Disconnect'
@@ -543,7 +545,6 @@ class ConnectionPanel(urwid.WidgetWrap):
     def _update_from_queue(self, obj):
         queue = self._connection.event_queue
         result = True
-        first_message_saved = False  # Track if the first message has been saved
 
         while not queue.empty():
             (kind, data) = queue.get()
@@ -553,11 +554,9 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._timer_key = app.start_periodic(1.0, self._set_info)
                     conn = self._connection
                     self._panel_changed_callback(self, conn)
-                    self._log.set_logfile(
-                        '{}_{}.log'.format(conn.call_from, conn.call_to))
+                    self._log.set_logfile('{}_{}.log'.format(conn.call_from, conn.call_to))
                     self.add_line('Connected to {}'.format(conn.call_to))
-                    self._menubar.menu.enable(
-                        self.MenuCommand.DISCONNECT, True)
+                    self._menubar.menu.enable(self.MenuCommand.DISCONNECT, True)
                 elif data in ('connect-timeout', 'disconnected'):
                     self._panel_changed_callback(self, None)
                     if self._connection:
@@ -573,23 +572,20 @@ class ConnectionPanel(urwid.WidgetWrap):
                         message = ('connection_error', 'Connection timed out')
                     else:
                         if self._connection_start:
-                            message = 'Disconnected ({})'.format(
-                                self._format_duration())
+                            message = 'Disconnected ({})'.format(self._format_duration())
                             self._connection_start = None
                         else:
                             message = 'Disconnected'
                     self.add_line(message)
                     self._log.set_logfile(None)
-                    self._menubar.menu.enable(
-                        self.MenuCommand.CONNECT, True)
-                    self._menubar.menu.enable(
-                        self.MenuCommand.DISCONNECT, False)
+                    self._menubar.menu.enable(self.MenuCommand.CONNECT, True)
+                    self._menubar.menu.enable(self.MenuCommand.DISCONNECT, False)
                     result = False
             elif kind == 'data':
-                if not first_message_saved:  # Check if the first message is not saved
+                if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
                     with open('first_message.txt', 'w') as f:  # Save the first message to a file
                         f.write(data.decode('utf-8'))  # Decode bytearray to str
-                    first_message_saved = True  # Mark the first message as saved
+                    ConnectionPanel.first_message_saved = True  # Mark the first message as saved
                 self._gather_lines(data)
             else:
                 logger.debug('Unknown queue entry: {}'.format(kind))
