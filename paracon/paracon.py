@@ -11,6 +11,8 @@ __version__ = '1.1.0'
 from enum import Enum
 import logging
 import re
+from dotenv import load_dotenv
+import os
 import sys
 import time
 from typing import NamedTuple
@@ -521,6 +523,10 @@ class ConnectionPanel(urwid.WidgetWrap):
 
     def _send(self, widget, text):
         if self._connection:
+            # Replace 'pgp' with 'hello' before sending
+            if text == "pub":
+                load_dotenv()
+                text = os.getenv('PUB_KEY')
             try:
                 self._connection.send_data(text + '\r')
             except BrokenPipeError:
@@ -557,6 +563,7 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._log.set_logfile('{}_{}.log'.format(conn.call_from, conn.call_to))
                     self.add_line('Connected to {}'.format(conn.call_to))
                     self._menubar.menu.enable(self.MenuCommand.DISCONNECT, True)
+                    #self._send(None, "Hello")
                 elif data in ('connect-timeout', 'disconnected'):
                     self._panel_changed_callback(self, None)
                     if self._connection:
@@ -583,9 +590,16 @@ class ConnectionPanel(urwid.WidgetWrap):
                     result = False
             elif kind == 'data':
                 if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
+                    print("Raw data:", data)  # Print raw data for debugging
+                    try:
+                        data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
+                    except UnicodeDecodeError:
+                        data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                    
                     with open('first_message.txt', 'w') as f:  # Save the first message to a file
-                        f.write(data.decode('utf-8'))  # Decode bytearray to str
+                        f.write(data)  # Write decoded data
                     ConnectionPanel.first_message_saved = True  # Mark the first message as saved
+
                 self._gather_lines(data)
             else:
                 logger.debug('Unknown queue entry: {}'.format(kind))
