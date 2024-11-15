@@ -483,7 +483,7 @@ class ConnectionPanel(urwid.WidgetWrap):
                     except UnicodeDecodeError:
                         data = data[2:].decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
                     
-                    with open('first_message.txt', 'w') as f:  # Save the first message to a file
+                    with open('first_message.txt', 'w', encoding='utf-8', errors='replace') as f:  # Save the first message to a file
                         f.write(data)  # Write decoded data
                     ConnectionPanel.first_message_saved = True  # Mark the first message as saved
                 else:  # Check if the first message is not saved
@@ -492,6 +492,8 @@ class ConnectionPanel(urwid.WidgetWrap):
                         data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
                     except UnicodeDecodeError:
                         data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                    with open('recent_message.txt', 'w') as f:  # Save the first message to a file
+                        f.write(data)  # Write decoded data
                     
                     
 
