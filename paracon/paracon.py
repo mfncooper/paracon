@@ -175,7 +175,7 @@ class Ports:
         return (self._port_nums[ix] if ix < len(self._port_nums)
                 else self._port_nums[0])
 
-
+#---------------------------------------------------------------------------------------------------------------------------------
 # =============================================================================
 # Monitor
 # =============================================================================
@@ -218,7 +218,7 @@ def _color_info_line(text):
 
 
 class MonitorPanel(urwid.WidgetWrap):
-    first_message_saved = False  # Class attribute to track if the first message has been saved
+    #first_message_saved = False  # Class attribute to track if the first message has been saved
     def __init__(self):
         self._log = urwidx.LoggingDequeListWalker([])
         self._list = SizeListBox(self._log)
@@ -252,17 +252,6 @@ class MonitorPanel(urwid.WidgetWrap):
                     logger.debug("Coloring failed: {}".format(line))
                     self.add_line(line)
             elif (kind is pserver.MonitorType.UNPROTO_TEXT or kind is pserver.MonitorType.CONN_TEXT):
-                if not MonitorPanel.first_message_saved:  # Check if the first message is not saved
-                    print("Raw data:", line)  # Print raw data for debugging
-                    # try:
-                    #     line = line.decode('utf-8', errors='replace')  # Replace invalid bytes
-                    # except UnicodeDecodeError:
-                    #     line = line.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
-                    
-                    with open('first_message.txt', 'w') as f:  # Save the first message to a file
-                        f.write(line)  # Write decoded data
-                    MonitorPanel.first_message_saved = True
-                # self.add_line(urwidx.safe_string(line.rstrip()))
                 self.add_multi_line(line)
             elif (kind is pserver.MonitorType.UNPROTO_NETROM
                     or kind is pserver.MonitorType.CONN_NETROM):
@@ -315,126 +304,13 @@ class MonitorWindow(urwid.WidgetWrap):
     def get_pref_col(self, size):
         return 'left'
 
-
-# =============================================================================
-# Unproto
-# =============================================================================
-
-class UnprotoScreen(urwid.WidgetWrap):
-
-    class MenuCommand(Enum):
-        CONFIGURE = 'Dest/Src'
-
-    def __init__(self, mwin):
-        self._mon = mwin
-        self._menubar = urwidx.MenuBar(self.MenuCommand)
-        self._set_info()
-        urwid.connect_signal(
-            self._menubar.menu, 'select', self._handle_menu_command)
-        self._entry = urwidx.LineEntry(caption="> ", edit_text="")
-        urwid.connect_signal(self._entry, 'line_entry', self._send)
-        self._pile = urwid.Pile([
-            ('weight', 1, self._mon),
-            (1, self._menubar),
-            (1, urwid.AttrMap(urwid.Filler(self._entry), 'entry_line'))
-        ])
-        super().__init__(urwid.AttrMap(urwid.LineBox(
-            self._pile, title="Unproto", title_align='center'), 'window_norm'))
-        urwid.connect_signal(app, 'server_started', self._update_info)
-
-    def _send(self, widget, text):
-        if not app.server:
-            self._mon.add_line(
-                ('unproto_error', 'Not connected to AGWPE server'))
-            return
-        src = config.get('Unproto', 'source')
-        if not src:
-            src = config.get('Setup', 'callsign')
-        dst = config.get('Unproto', 'destination')
-        via = config.get('Unproto', 'via')
-        port = config.get_int('Unproto', 'port')
-        if port is not None:
-            port = app.ports.valid_port(port)
-        if port is None:
-            port = app.ports.port_for_index(0)
-        if not self._valid_config(src, dst, via):
-            self._mon.add_line(('unproto_error', 'Unproto config is invalid'))
-            return
-        vias = via.split() if via else None
-        try:
-            app.server.send_unproto(port, src, dst, text, vias)
-        except BrokenPipeError:
-            self._mon.add_line(
-                ('unproto_error', 'AGWPE server has disconnected'))
-            app.server_disappeared()
-
-    def _valid_config(self, src, dst, via):
-        if not (src and ax25.Address.valid_call(src)
-                and dst and ax25.Address.valid_call(dst)):
-            return False
-        if via:
-            vias = via.split()
-            for v in vias:
-                if not ax25.Address.valid_call(v):
-                    return False
-        return True
-
-    def _handle_menu_command(self, cmd):
-        if cmd is self.MenuCommand.CONFIGURE:
-            self._configure()
-
-    def keypress(self, size, key):
-        key = self._menubar.keypress(size, key)
-        if key:
-            key = super().keypress(size, key)
-        if key:
-            # If the key hasn't been handled already, let the line entry
-            # widget see if it wants it. This allows someone to type into
-            # that widget without the focus having to be put there first.
-            #
-            # We "know" that the edit widget spans the screen, minus
-            # the widget of the border around the Unproto window.
-            key = self._entry.keypress((size[0] - 2, ), key)
-        return key
-
-    def _configure(self):
-        dlg = UnprotoDialog()
-        urwid.connect_signal(dlg, 'unproto_info', self._change_config)
-        dlg.show(app._loop)
-
-    def _change_config(self, info):
-        config.set('Unproto', 'source', info.src)
-        config.set('Unproto', 'destination', info.dst)
-        config.set('Unproto', 'via', info.via)
-        config.set_int('Unproto', 'port',
-                       app.ports.port_for_index(info.port[0]))
-        config.save_config()
-        self._set_info()
-
-    def _set_info(self):
-        src = config.get('Unproto', 'source')
-        if not src:
-            src = config.get('Setup', 'callsign')
-        dst = config.get('Unproto', 'destination')
-        via = config.get('Unproto', 'via')
-        text = "From: {}  To: {} ".format(src, dst)
-        if via:
-            # Vias are saved with spaces, but displayed with commas
-            via = ','.join(via.split())
-            text += " Via: {} ".format(via)
-        self._menubar.status = text
-
-    def _update_info(self, server):
-        self._set_info()
-
-
 # =============================================================================
 # Connections
 # =============================================================================
 
 class ConnectionPanel(urwid.WidgetWrap):
 
-    #first_message_saved = False  # Class attribute to track if the first message has been saved!!
+    first_message_saved = False  # Class attribute to track if the first message has been saved!!
 
     class MenuCommand(Enum):
         CONNECT = 'Connect'
@@ -599,24 +475,24 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._menubar.menu.enable(self.MenuCommand.DISCONNECT, False)
                     result = False
             elif kind == 'data':
-                # if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
-                #     print("Raw data:", data)  # Print raw data for debugging
-                #     try:
-                #         data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
-                #     except UnicodeDecodeError:
-                #         data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
+                    print("Raw data:", data)  # Print raw data for debugging
+                    try:
+                        # Ignore the first two positions (characters) by slicing data[2:]
+                        data = data[2:].decode('utf-8', errors='replace')  # Replace invalid bytes
+                    except UnicodeDecodeError:
+                        data = data[2:].decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
                     
-                #     with open('first_message.txt', 'w') as f:  # Save the first message to a file
-                #         f.write(data)  # Write decoded data
-                #     ConnectionPanel.first_message_saved = True  # Mark the first message as saved
-                # else:  # Check if the first message is not saved
-                #     print("Not First Raw data:", data)  # Print raw data for debugging
-                #     try:
-                #         data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
-                #         data = "Hello"
-                #     except UnicodeDecodeError:
-                #         data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
-                #         data = "Hello"
+                    with open('first_message.txt', 'w') as f:  # Save the first message to a file
+                        f.write(data)  # Write decoded data
+                    ConnectionPanel.first_message_saved = True  # Mark the first message as saved
+                else:  # Check if the first message is not saved
+                    print("Not first Raw data:", data)  # Print raw data for debugging
+                    try:
+                        data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
+                    except UnicodeDecodeError:
+                        data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                    
                     
 
                 self._gather_lines(data)
@@ -768,6 +644,7 @@ class ConnectionWindow(urwid.WidgetWrap):
         super().mouse_event(size, event, button, col, row, focus)
 
 
+
 class ConnectionsScreen(urwid.WidgetWrap):
     def __init__(self, monitor_panel):
         self._connections_window = ConnectionWindow()
@@ -781,15 +658,55 @@ class ConnectionsScreen(urwid.WidgetWrap):
     def keypress(self, size, key):
         key = super().keypress(size, key)
         if key:
-            # If the key hasn't been handled already, let the line entry
-            # widget see if it wants it. This allows someone to type into
-            # that control without the focus having to be put there first.
             edit = self._connections_window.current_edit_widget
             if edit:
-                # We "know" that the edit widget spans the screen, minus
-                # the widget of the border around the Connections window.
                 key = edit.keypress((size[0] - 2, ), key)
         return key
+
+    def _update_from_queue(self):
+        if self._connection:
+            messages = self._connection.get_messages()
+            for message in messages:
+                self._connections_window.add_line(message)
+
+    def _make_connection(self, info):
+        registered = app.server.register_callsign(info.connect_as)
+        if not registered:
+            self._connections_window.add_line(
+                ('connection_error', 'Unable to register callsign. Cannot continue.'))
+            self._connections_window.add_line(
+                ('connection_error', 'Your connection may be configured as readonly.'))
+            return
+        self._menubar.menu.enable(self.MenuCommand.CONNECT, False)
+        port = app.ports.port_for_index(info.port[0])
+        vias = info.connect_via.split() if info.connect_via else None
+        conn = app.server.open_connection(
+            port, info.connect_as, info.connect_to, vias)
+        self._connection = conn
+        self._periodic_key = app.start_periodic(1.0, self._update_from_queue)
+        self._connections_window.add_line('Connecting to {} ...'.format(info.connect_to))
+
+    def _disconnect(self):
+        if self._connection:
+            self._connection.close()
+        self._menubar.menu.enable(self.MenuCommand.DISCONNECT, False)
+        self._connections_window.add_line('Disconnected.')
+
+    def _reset(self):
+        self._panel_changed_callback(self, None)
+        if self._connection:
+            self._connection = None
+            self._set_info()
+        if self._periodic_key:
+            app.stop_periodic(self._periodic_key)
+            self._periodic_key = None
+        self._log.set_logfile(None)
+        self._connections_window.add_line('Connection reset.')
+#--------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
 
 
 # =============================================================================
@@ -1490,6 +1407,119 @@ class UnprotoDialog(urwidx.FormDialog):
         vias = re.findall("[A-Z0-9-]+", via)
         info = self.UnprotoInfo(src, dst, ' '.join(vias), port)
         urwid.emit_signal(self, 'unproto_info', info)
+
+
+
+# =============================================================================
+# Unproto
+# =============================================================================
+
+class UnprotoScreen(urwid.WidgetWrap):
+
+    class MenuCommand(Enum):
+        CONFIGURE = 'Dest/Src'
+
+    def __init__(self, mwin):
+        self._mon = mwin
+        self._menubar = urwidx.MenuBar(self.MenuCommand)
+        self._set_info()
+        urwid.connect_signal(
+            self._menubar.menu, 'select', self._handle_menu_command)
+        self._entry = urwidx.LineEntry(caption="> ", edit_text="")
+        urwid.connect_signal(self._entry, 'line_entry', self._send)
+        self._pile = urwid.Pile([
+            ('weight', 1, self._mon),
+            (1, self._menubar),
+            (1, urwid.AttrMap(urwid.Filler(self._entry), 'entry_line'))
+        ])
+        super().__init__(urwid.AttrMap(urwid.LineBox(
+            self._pile, title="Unproto", title_align='center'), 'window_norm'))
+        urwid.connect_signal(app, 'server_started', self._update_info)
+
+    def _send(self, widget, text):
+        if not app.server:
+            self._mon.add_line(
+                ('unproto_error', 'Not connected to AGWPE server'))
+            return
+        src = config.get('Unproto', 'source')
+        if not src:
+            src = config.get('Setup', 'callsign')
+        dst = config.get('Unproto', 'destination')
+        via = config.get('Unproto', 'via')
+        port = config.get_int('Unproto', 'port')
+        if port is not None:
+            port = app.ports.valid_port(port)
+        if port is None:
+            port = app.ports.port_for_index(0)
+        if not self._valid_config(src, dst, via):
+            self._mon.add_line(('unproto_error', 'Unproto config is invalid'))
+            return
+        vias = via.split() if via else None
+        try:
+            app.server.send_unproto(port, src, dst, text, vias)
+        except BrokenPipeError:
+            self._mon.add_line(
+                ('unproto_error', 'AGWPE server has disconnected'))
+            app.server_disappeared()
+
+    def _valid_config(self, src, dst, via):
+        if not (src and ax25.Address.valid_call(src)
+                and dst and ax25.Address.valid_call(dst)):
+            return False
+        if via:
+            vias = via.split()
+            for v in vias:
+                if not ax25.Address.valid_call(v):
+                    return False
+        return True
+
+    def _handle_menu_command(self, cmd):
+        if cmd is self.MenuCommand.CONFIGURE:
+            self._configure()
+
+    def keypress(self, size, key):
+        key = self._menubar.keypress(size, key)
+        if key:
+            key = super().keypress(size, key)
+        if key:
+            # If the key hasn't been handled already, let the line entry
+            # widget see if it wants it. This allows someone to type into
+            # that widget without the focus having to be put there first.
+            #
+            # We "know" that the edit widget spans the screen, minus
+            # the widget of the border around the Unproto window.
+            key = self._entry.keypress((size[0] - 2, ), key)
+        return key
+
+    def _configure(self):
+        dlg = UnprotoDialog()
+        urwid.connect_signal(dlg, 'unproto_info', self._change_config)
+        dlg.show(app._loop)
+
+    def _change_config(self, info):
+        config.set('Unproto', 'source', info.src)
+        config.set('Unproto', 'destination', info.dst)
+        config.set('Unproto', 'via', info.via)
+        config.set_int('Unproto', 'port',
+                       app.ports.port_for_index(info.port[0]))
+        config.save_config()
+        self._set_info()
+
+    def _set_info(self):
+        src = config.get('Unproto', 'source')
+        if not src:
+            src = config.get('Setup', 'callsign')
+        dst = config.get('Unproto', 'destination')
+        via = config.get('Unproto', 'via')
+        text = "From: {}  To: {} ".format(src, dst)
+        if via:
+            # Vias are saved with spaces, but displayed with commas
+            via = ','.join(via.split())
+            text += " Via: {} ".format(via)
+        self._menubar.status = text
+
+    def _update_info(self, server):
+        self._set_info()
 
 
 # =============================================================================
