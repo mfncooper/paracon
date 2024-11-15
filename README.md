@@ -89,6 +89,8 @@ pip install pyham_ax25
 
 pip install pyham_pe
 
+pip install python-dotenv
+
 ## Documentation
 
 Full documentation is available
