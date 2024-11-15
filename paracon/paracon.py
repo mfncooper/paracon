@@ -218,6 +218,7 @@ def _color_info_line(text):
 
 
 class MonitorPanel(urwid.WidgetWrap):
+    first_message_saved = False  # Class attribute to track if the first message has been saved
     def __init__(self):
         self._log = urwidx.LoggingDequeListWalker([])
         self._list = SizeListBox(self._log)
@@ -241,17 +242,26 @@ class MonitorPanel(urwid.WidgetWrap):
     def _update_from_queue(self, obj):
         while not self._queue.empty():
             (kind, port, line) = self._queue.get()
-            if (kind is pserver.MonitorType.UNPROTO_INFO
-                    or kind is pserver.MonitorType.CONN_INFO
-                    or kind is pserver.MonitorType.SUPER_INFO):
+
+
+            if (kind is pserver.MonitorType.UNPROTO_INFO or kind is pserver.MonitorType.CONN_INFO or kind is pserver.MonitorType.SUPER_INFO):
                 clr_line = _color_info_line(line)
                 if clr_line:
                     self.add_line(clr_line)
                 else:
                     logger.debug("Coloring failed: {}".format(line))
                     self.add_line(line)
-            elif (kind is pserver.MonitorType.UNPROTO_TEXT
-                    or kind is pserver.MonitorType.CONN_TEXT):
+            elif (kind is pserver.MonitorType.UNPROTO_TEXT or kind is pserver.MonitorType.CONN_TEXT):
+                if not MonitorPanel.first_message_saved:  # Check if the first message is not saved
+                    print("Raw data:", line)  # Print raw data for debugging
+                    # try:
+                    #     line = line.decode('utf-8', errors='replace')  # Replace invalid bytes
+                    # except UnicodeDecodeError:
+                    #     line = line.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                    
+                    with open('first_message.txt', 'w') as f:  # Save the first message to a file
+                        f.write(line)  # Write decoded data
+                    MonitorPanel.first_message_saved = True
                 # self.add_line(urwidx.safe_string(line.rstrip()))
                 self.add_multi_line(line)
             elif (kind is pserver.MonitorType.UNPROTO_NETROM
@@ -424,7 +434,7 @@ class UnprotoScreen(urwid.WidgetWrap):
 
 class ConnectionPanel(urwid.WidgetWrap):
 
-    first_message_saved = False  # Class attribute to track if the first message has been saved
+    #first_message_saved = False  # Class attribute to track if the first message has been saved!!
 
     class MenuCommand(Enum):
         CONNECT = 'Connect'
@@ -589,16 +599,25 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._menubar.menu.enable(self.MenuCommand.DISCONNECT, False)
                     result = False
             elif kind == 'data':
-                if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
-                    print("Raw data:", data)  # Print raw data for debugging
-                    try:
-                        data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
-                    except UnicodeDecodeError:
-                        data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                # if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
+                #     print("Raw data:", data)  # Print raw data for debugging
+                #     try:
+                #         data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
+                #     except UnicodeDecodeError:
+                #         data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
                     
-                    with open('first_message.txt', 'w') as f:  # Save the first message to a file
-                        f.write(data)  # Write decoded data
-                    ConnectionPanel.first_message_saved = True  # Mark the first message as saved
+                #     with open('first_message.txt', 'w') as f:  # Save the first message to a file
+                #         f.write(data)  # Write decoded data
+                #     ConnectionPanel.first_message_saved = True  # Mark the first message as saved
+                # else:  # Check if the first message is not saved
+                #     print("Not First Raw data:", data)  # Print raw data for debugging
+                #     try:
+                #         data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
+                #         data = "Hello"
+                #     except UnicodeDecodeError:
+                #         data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
+                #         data = "Hello"
+                    
 
                 self._gather_lines(data)
             else:
