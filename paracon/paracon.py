@@ -218,7 +218,6 @@ def _color_info_line(text):
 
 
 class MonitorPanel(urwid.WidgetWrap):
-    #first_message_saved = False  # Class attribute to track if the first message has been saved
     def __init__(self):
         self._log = urwidx.LoggingDequeListWalker([])
         self._list = SizeListBox(self._log)
@@ -310,8 +309,6 @@ class MonitorWindow(urwid.WidgetWrap):
 
 class ConnectionPanel(urwid.WidgetWrap):
 
-    first_message_saved = False  # Class attribute to track if the first message has been saved!!
-
     class MenuCommand(Enum):
         CONNECT = 'Connect'
         DISCONNECT = 'Disconnect'
@@ -323,6 +320,7 @@ class ConnectionPanel(urwid.WidgetWrap):
         self._timer_key = None
         self._periodic_key = None
         self._line_remains = ''
+        self._first_message_saved = False  # Flag to track if the first message has been saved
         self._log = urwidx.LoggingDequeListWalker([])
         self._list = SizeListBox(self._log)
         self._menubar = urwidx.MenuBar(self.MenuCommand)
@@ -381,7 +379,7 @@ class ConnectionPanel(urwid.WidgetWrap):
             port, info.connect_as, info.connect_to, vias)
         self._connection = conn
         self._periodic_key = app.start_periodic(1.0, self._update_from_queue)
-        self.add_line('Connecting to {} ...'.format(info.connect_to))
+        self.add_line(f'Connecting to {info.connect_to} ...')
         # Connection process will complete in _update_from_queue()
 
     def _disconnect(self):
@@ -402,14 +400,13 @@ class ConnectionPanel(urwid.WidgetWrap):
             app.stop_periodic(self._periodic_key)
             self._periodic_key = None
         self._log.set_logfile(None)
-        self._menubar.menu.enable(
-            self.MenuCommand.CONNECT, True)
-        self._menubar.menu.enable(
-            self.MenuCommand.DISCONNECT, False)
+        self._menubar.menu.enable(self.MenuCommand.CONNECT, True)
+        self._menubar.menu.enable(self.MenuCommand.DISCONNECT, False)
+        self._first_message_saved = False  # Reset the flag when connection is reset
+
 
     def _send(self, widget, text):
         if self._connection:
-            # Replace 'pgp' with 'hello' before sending
             if text == "pub":
                 load_dotenv()
                 text = os.getenv('PUB_KEY')
@@ -435,6 +432,9 @@ class ConnectionPanel(urwid.WidgetWrap):
         return super().keypress(size, key)
 
     def _update_from_queue(self, obj):
+        if not self._connection:
+            return False
+
         queue = self._connection.event_queue
         result = True
 
@@ -446,10 +446,9 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._timer_key = app.start_periodic(1.0, self._set_info)
                     conn = self._connection
                     self._panel_changed_callback(self, conn)
-                    self._log.set_logfile('{}_{}.log'.format(conn.call_from, conn.call_to))
-                    self.add_line('Connected to {}'.format(conn.call_to))
+                    self._log.set_logfile(f'{conn.call_from}_{conn.call_to}.log')
+                    self.add_line(f'Connected to {conn.call_to}')
                     self._menubar.menu.enable(self.MenuCommand.DISCONNECT, True)
-                    #self._send(None, "Hello")
                 elif data in ('connect-timeout', 'disconnected'):
                     self._panel_changed_callback(self, None)
                     if self._connection:
@@ -465,7 +464,7 @@ class ConnectionPanel(urwid.WidgetWrap):
                         message = ('connection_error', 'Connection timed out')
                     else:
                         if self._connection_start:
-                            message = 'Disconnected ({})'.format(self._format_duration())
+                            message = f'Disconnected ({self._format_duration()})'
                             self._connection_start = None
                         else:
                             message = 'Disconnected'
@@ -475,55 +474,50 @@ class ConnectionPanel(urwid.WidgetWrap):
                     self._menubar.menu.enable(self.MenuCommand.DISCONNECT, False)
                     result = False
             elif kind == 'data':
-                if not ConnectionPanel.first_message_saved:  # Check if the first message is not saved
-                    print("Raw data:", data)  # Print raw data for debugging
-                    try:
-                        # Ignore the first two positions (characters) by slicing data[2:]
-                        data = data[2:].decode('utf-8', errors='replace')  # Replace invalid bytes
-                    except UnicodeDecodeError:
-                        data = data[2:].decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
-                    
-                    with open('first_message.txt', 'w', encoding='utf-8', errors='replace') as f:  # Save the first message to a file
-                        f.write(data)  # Write decoded data
-                    ConnectionPanel.first_message_saved = True  # Mark the first message as saved
-                else:  # Check if the first message is not saved
-                    print("Not first Raw data:", data)  # Print raw data for debugging
-                    try:
-                        data = data.decode('utf-8', errors='replace')  # Replace invalid bytes
-                    except UnicodeDecodeError:
-                        data = data.decode('ISO-8859-1', errors='replace')  # Fallback if UTF-8 fails entirely
-                    with open('recent_message.txt', 'w') as f:  # Save the first message to a file
-                        f.write(data)  # Write decoded data
-                    
-                    
+                try:
+                    # Decode the data received from the connection
+                    data_str = data.decode('utf-8', errors='replace')
+                except UnicodeDecodeError:
+                    data_str = data.decode('ISO-8859-1', errors='replace')
 
-                self._gather_lines(data)
+                with open('most_recent_message.txt', 'w', encoding='utf-8') as f:
+                    f.write(data_str)
+                    
+                # Save the first message received to a file
+                if not self._first_message_saved:
+                    with open('first_message.txt', 'w', encoding='utf-8') as f:
+                        f.write(data_str)
+                    self._first_message_saved = True  # Mark as saved
+                # Pass the data to _gather_lines to handle line splitting
+                self._gather_lines(data_str)
             else:
                 logger.debug('Unknown queue entry: {}'.format(kind))
         return result
 
     def _gather_lines(self, data):
         if not isinstance(data, str):
-            data = data.decode('utf-8')
+            data = data.decode('utf-8', errors='replace')
+        # Split data into lines and handle any remaining partial lines
         parts = data.split('\r')
-        if len(self._line_remains):
+        if self._line_remains:
             parts[0] = self._line_remains + parts[0]
-            self._line_remains = ""
+            self._line_remains = ''
         if data[-1] != '\r':
-            self._line_remains = parts[-1]
-        del parts[-1]
-        for part in parts:
-            self.add_line(part)
+            self._line_remains = parts.pop()
+        else:
+            parts.pop()  # Remove empty string at the end if data ends with '\r'
+        for line in parts:
+            if line:
+                self.add_line(('connection_inbound', line))
 
     def add_line(self, line):
         text = urwid.Text(line)
-        if type(line) is str:
-            text = urwid.AttrMap(text, 'connection_inbound')
+        if isinstance(line, tuple):
+            text = urwid.AttrMap(text, line[0])
         # Save the state of visibility before appending new content
         ends_visible = self._list.ends_visible(self._list.size)
         self._log.append(text)
-        # Auto-scroll only if the last entry is currently visible (i.e. the
-        # user has not scrolled up to view earlier entries)
+        # Auto-scroll only if the last entry is currently visible
         if 'bottom' in ends_visible:
             self._list.set_focus(len(self._log) - 1, 'above')
 
@@ -531,8 +525,7 @@ class ConnectionPanel(urwid.WidgetWrap):
         if self._connection:
             conn = self._connection
             duration = self._format_duration()
-            text = "Connected to {} as {} ({}) ".format(
-                conn.call_to, conn.call_from, duration)
+            text = f"Connected to {conn.call_to} as {conn.call_from} ({duration}) "
         else:
             text = "Not connected "
         self._menubar.status = text
@@ -541,9 +534,9 @@ class ConnectionPanel(urwid.WidgetWrap):
     def _format_duration(self):
         duration = time.time() - self._connection_start
         hr = int(duration // 3600)
-        min = int(duration // 60)
+        min = int((duration % 3600) // 60)
         sec = int(duration % 60)
-        return '{:02d}:{:02d}:{:02d}'.format(hr, min, sec)
+        return f'{hr:02d}:{min:02d}:{sec:02d}'
 
 
 class ConnectionWindow(urwid.WidgetWrap):
