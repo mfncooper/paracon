@@ -410,6 +410,9 @@ class ConnectionPanel(urwid.WidgetWrap):
             if text == "pub":
                 load_dotenv()
                 text = os.getenv('PUB_KEY')
+            else:
+                # Encrypt here
+                text += 'X'
             try:
                 self._connection.send_data(text + '\r')
             except BrokenPipeError:
