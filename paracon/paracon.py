@@ -13,6 +13,11 @@ import logging
 import re
 from dotenv import load_dotenv
 import os
+
+import gnupg # PGP
+import tempfile # PGP
+import shutil # PGP
+
 import sys
 import time
 from typing import NamedTuple
@@ -23,6 +28,10 @@ import ax25.netrom
 import config
 import pserver
 import urwidx
+
+GPG_HOME = tempfile.mkdtemp(prefix="gnupg_")
+gpg = gnupg.GPG(gnupghome=GPG_HOME) # PGP
+
 
 IS_WINDOWS = sys.platform == "win32"
 
@@ -336,6 +345,26 @@ class ConnectionPanel(urwid.WidgetWrap):
             (1, urwid.AttrMap(urwid.Filler(self._entry), 'entry_line'))
         ])
         super().__init__(self._pile)
+        # PGP --------------------------------------
+        self.gpg = gnupg.GPG(gnupghome=GPG_HOME) # PGP
+        self.passphrase = 'your_passphrase'  # Replace with a secure passphrase PGP
+        # Always generate a new key pair
+        input_data = self.gpg.gen_key_input(
+            name_real='Your Name',
+            name_email='your_email@example.com',
+            passphrase=self.passphrase,
+            key_type='RSA',
+            key_length=1024,
+        )
+        key = self.gpg.gen_key(input_data)
+        if not key:
+            raise ValueError("Failed to generate GPG key pair.")
+        self.fingerprint = key.fingerprint
+
+        # Initialize recipient fingerprint
+        self.recipient_fingerprint = None
+        self.sender_fingerprint = None
+        #PGP ---------------------------------------
 
     @property
     def edit_widget(self):
@@ -408,11 +437,28 @@ class ConnectionPanel(urwid.WidgetWrap):
     def _send(self, widget, text):
         if self._connection:
             if text == "pub":
-                load_dotenv()
-                text = os.getenv('PUB_KEY')
+                public_keys = self.gpg.export_keys(self.fingerprint)
+                text = public_keys
+                # load_dotenv()
+                # text = os.getenv('PUB_KEY')
             else:
-                # Encrypt here
-                text += 'X'
+                if not self.recipient_fingerprint:
+                    self.add_line(('connection_error', 'Recipient public key not available. Please request the public key.'))
+                    return
+
+                # Encrypt Message here
+                encrypted_data = self.gpg.encrypt(
+                    text,
+                    recipients=[self.recipient_fingerprint],
+                    always_trust=True
+                )
+                if not encrypted_data.ok:
+                    self.add_line(('connection_error', f'Encryption failed: {encrypted_data.status}'))
+                    return
+                text = str(encrypted_data)
+
+                # Encrypt Message here
+                # text += 'S'
             try:
                 self._connection.send_data(text + '\r')
             except BrokenPipeError:
@@ -491,6 +537,27 @@ class ConnectionPanel(urwid.WidgetWrap):
                     with open('first_message.txt', 'w', encoding='utf-8') as f:
                         f.write(data_str)
                     self._first_message_saved = True  # Mark as saved
+
+                    # PGP --------------------------------------
+                    # Attempt to import the sender's public key
+                    import_result = self.gpg.import_keys(data_str)
+                    if import_result.count == 0:
+                        self.add_line(('connection_error', 'Failed to import public key from the sender.'))
+                    else:
+                        self.sender_fingerprint = import_result.fingerprints[0]
+                        self.recipient_fingerprint = self.sender_fingerprint  # Set recipient fingerprint
+                        self.add_line(('connection_inbound', 'Public key imported from the sender.'))
+                    # PGP --------------------------------------
+                else:
+                    # Decrypt message here
+                    decrypted_data = self.gpg.decrypt(data_str, passphrase=self.passphrase)
+                    if not decrypted_data.ok:
+                        self.add_line(('connection_error', f'Decryption failed: {decrypted_data.status}'))
+                        return
+                    data_str = str(decrypted_data)
+                    with open('most_recent_message.txt', 'w', encoding='utf-8') as f:
+                        f.write(data_str)
+                    self.add_line(('connection_inbound', data_str))
                 # Pass the data to _gather_lines to handle line splitting
                 self._gather_lines(data_str)
             else:
@@ -701,11 +768,6 @@ class ConnectionsScreen(urwid.WidgetWrap):
         self._log.set_logfile(None)
         self._connections_window.add_line('Connection reset.')
 #--------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
-
 
 # =============================================================================
 # Application
@@ -1407,7 +1469,6 @@ class UnprotoDialog(urwidx.FormDialog):
         urwid.emit_signal(self, 'unproto_info', info)
 
 
-
 # =============================================================================
 # Unproto
 # =============================================================================
@@ -1536,7 +1597,11 @@ app = Application()
 
 
 def run():
-    app.run()
+    try:
+        app.run()
+    finally:
+        # Clean up the temporary GnuPG directory
+        shutil.rmtree(GPG_HOME)
 
 
 if __name__ == "__main__":
