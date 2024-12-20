@@ -1,3 +1,38 @@
+# Paracon-PGP: A Modified Version of Paracon
+## Overview & Updates
+This is a modified version of Martin Cooper's Paracon that is intended for encrypted communications.
+
+Paracon-PGP is a packet radio terminal that uses RSA to encrypt the information/payload section of AX.25 packets. This application is intended for those involved in amateur radio, also known as HAM radio.
+
+### ADDED FEATURES
+- Users running Paracon-PGP are given a new public and private key every session
+- The information contained in the first 'I' frame type received will be saved as the second-party public key
+- All outgoing messages are encrypted with a second-party public key
+- All incoming messages are decrypted with users's private key
+
+### UPDATES
+- All 'I' frame information/payload sections are displayed in the connections window
+
+## Paracon-PGP Instructions
+This application works the same as Paracon; however, after connecting to a user, the user must send out their public key before conversing. Additionally, GnuPG must be installed before use; GnuPG can be downloaded from https://gnupg.org/download/index.html.
+
+To send out your public key, users must send the word "pub". 
+
+```pub```
+
+This will automatically send out your public key. Assuming the second party is using Paracon-PGP, this key will be automatically saved. Inversely, the other user must send theirs as well. 
+
+After both users have public keys, any messages sent will be sent encrypted and then decrypted on the receiving end, leaving the monitor window to display the decrypted message on the recipient's screen.
+
+**Paracon-PGP Author**: Thomas McLaughlin, KC3YTX
+
+**Paracon Author**: Martin F N Cooper, KD6YAM
+
+**License**: MIT License
+
+<br>
+<br>
+
 # PyHam Paracon
 
 ## Overview
