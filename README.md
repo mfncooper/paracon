@@ -2,7 +2,7 @@
 ## Overview & Updates
 This is a modified version of Martin Cooper's Paracon that is intended for encrypted communications.
 
-Paracon-PGP is a packet radio terminal that uses RSA to encrypt the information/payload section of AX.25 packets. This application is intended for those involved in amateur radio, also known as HAM radio.
+Paracon-PGP is a packet radio terminal that uses RSA to encrypt the information/payload section of AX.25 packets. This application is intended for those involved in amateur radio, also known as HAM radio. Users should use this program responsibly and only in jurisdictions where such encryption practices are compliant with local laws and regulations.
 
 ### ADDED FEATURES
 - Users running Paracon-PGP are given a new public and private key every session
