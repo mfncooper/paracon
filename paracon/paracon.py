@@ -1,7 +1,9 @@
 # =============================================================================
+# Copyright (c) 2024-2025 Thomas McLaughlin
 # Copyright (c) 2021-2024 Martin F N Cooper
 #
-# Author: Martin F N Cooper
+# Paracon PGP Author: Thomas McLaughlin
+# Paracon Author: Martin F N Cooper
 # License: MIT License
 # =============================================================================
 
@@ -439,8 +441,6 @@ class ConnectionPanel(urwid.WidgetWrap):
             if text == "pub":
                 public_keys = self.gpg.export_keys(self.fingerprint)
                 text = public_keys
-                # load_dotenv()
-                # text = os.getenv('PUB_KEY')
             else:
                 if not self.recipient_fingerprint:
                     self.add_line(('connection_error', 'Recipient public key not available. Please request the public key.'))
@@ -457,8 +457,6 @@ class ConnectionPanel(urwid.WidgetWrap):
                     return
                 text = str(encrypted_data)
 
-                # Encrypt Message here
-                # text += 'S'
             try:
                 self._connection.send_data(text + '\r')
             except BrokenPipeError:
@@ -767,7 +765,6 @@ class ConnectionsScreen(urwid.WidgetWrap):
             self._periodic_key = None
         self._log.set_logfile(None)
         self._connections_window.add_line('Connection reset.')
-#--------------------------------------------------------------------------------------------------------------------------------------------------
 
 # =============================================================================
 # Application
