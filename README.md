@@ -23,6 +23,12 @@ Key features of Paracon include:
 **Author**: Martin F N Cooper, KD6YAM  
 **License**: MIT License
 
+### Limitations
+
+- Due to
+  [limitations of the TUI library](https://github.com/urwid/urwid?tab=readme-ov-file#windows-support-notes)
+  on which Paracon is built, Paracon on Windows requires Windows 10 or later.
+
 ## Installation
 
 **Important**: This application requires Python 3.7 or later.
