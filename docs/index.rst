@@ -32,6 +32,8 @@ Limitations
   `limitations of the TUI library <https://github.com/urwid/urwid?tab=readme-ov-file#windows-support-notes>`__
   on which Paracon is built, Paracon on Windows requires Windows 10 or later.
 
+- When used with LinBPQ, Paracon requires LinBPQ 6.0.24.73 or later.
+
 Installation
 ------------
 
