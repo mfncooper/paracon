@@ -31,6 +31,7 @@ class MonitorType(Enum):
     built into Paracon.
     """
     UNPROTO_INFO   = 'UI'
+    UNPROTO_OWN    = 'UO'
     UNPROTO_TEXT   = 'UT'
     UNPROTO_NETROM = 'UN'
     UNPROTO_BINARY = 'UB'
@@ -54,8 +55,9 @@ class _Monitor(pe.monitor.Monitor):
     def event_queue(self):
         return self._queue
 
-    def monitored_unproto(self, port, call_from, call_to, text, data):
-        self._queue.put((MonitorType.UNPROTO_INFO, port, text))
+    def _monitored_unproto(self, port, call_from, call_to, text, data, own):
+        mon_type = MonitorType.UNPROTO_OWN if own else MonitorType.UNPROTO_INFO
+        self._queue.put((mon_type, port, text))
         if ' pid=F0 ' in text:
             self._queue.put((MonitorType.UNPROTO_TEXT, port,
                              data.decode('utf-8', 'replace')))
@@ -63,6 +65,12 @@ class _Monitor(pe.monitor.Monitor):
             self._queue.put((MonitorType.UNPROTO_NETROM, port, data))
         else:
             self._queue.put((MonitorType.UNPROTO_BINARY, port, data))
+
+    def monitored_unproto(self, port, call_from, call_to, text, data):
+        self._monitored_unproto(port, call_from, call_to, text, data, False)
+
+    def monitored_own(self, port, call_from, call_to, text, data):
+        self._monitored_unproto(port, call_from, call_to, text, data, True)
 
     def monitored_connected(self, port, call_from, call_to, text, data):
         self._queue.put((MonitorType.CONN_INFO, port, text))

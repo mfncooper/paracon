@@ -73,6 +73,7 @@ palette = [
     # Monitor
     ('monitor_text', 'white', 'black'),
     ('monitor_call', 'light green', 'black'),
+    ('monitor_own', 'light magenta', 'black'),
 
     # Connections
     ('connection_inbound', 'light cyan', 'black'),
@@ -193,22 +194,23 @@ _INFO_LINE_PATTERN = re.compile(r"""
 """, re.VERBOSE)
 
 
-def _color_info_line(text):
+def _color_info_line(text, own=False):
+    monitor_call = 'monitor_own' if own else 'monitor_call'
     text = text.rstrip('\x00').rstrip()
     m = _INFO_LINE_PATTERN.match(text)
     if not m:
         return None
     line = [
         ('monitor_text', "{}:Fm ".format(m['msg_port'])),
-        ('monitor_call', m['call_from']),
+        (monitor_call, m['call_from']),
         ('monitor_text', " To "),
-        ('monitor_call', m['call_to'])
+        (monitor_call, m['call_to'])
     ]
     if m['call_via']:
         vias = m['call_via'].split(',')
         line.append(('monitor_text', " Via "))
         for via in vias:
-            line.append(('monitor_call', via))
+            line.append((monitor_call, via))
             line.append(('monitor_text', ','))
         line = line[:-1]
     line.append(
@@ -241,9 +243,11 @@ class MonitorPanel(urwid.WidgetWrap):
         while not self._queue.empty():
             (kind, port, line) = self._queue.get()
             if (kind is pserver.MonitorType.UNPROTO_INFO
+                    or kind is pserver.MonitorType.UNPROTO_OWN
                     or kind is pserver.MonitorType.CONN_INFO
                     or kind is pserver.MonitorType.SUPER_INFO):
-                clr_line = _color_info_line(line)
+                clr_line = _color_info_line(
+                    line, kind is pserver.MonitorType.UNPROTO_OWN)
                 if clr_line:
                     self.add_line(clr_line)
                 else:
