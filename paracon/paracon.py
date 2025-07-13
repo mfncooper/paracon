@@ -8,6 +8,7 @@
 __author__ = 'Martin F N Cooper'
 __version__ = '1.1.0'
 
+import codecs
 from enum import Enum
 import logging
 import re
@@ -430,6 +431,7 @@ class ConnectionPanel(urwid.WidgetWrap):
         self._panel_changed_callback = panel_changed_callback
         self._connection = None
         self._connection_start = None
+        self._decoders = self._init_decoders()
         self._timer_key = None
         self._periodic_key = None
         self._line_remains = ''
@@ -473,6 +475,19 @@ class ConnectionPanel(urwid.WidgetWrap):
         config.set_int('Connect', 'port',
                        app.ports.port_for_index(info.port[0]))
         config.save_config()
+
+    def _init_decoders(self):
+        decoders = ['utf-8']
+        alt = config.get('Connect', 'decode_alt') or ''
+        if alt:
+            try:
+                codecs.lookup(alt)
+            except LookupError:
+                logger.error(
+                    'Invalid codec configured in decode_alt: {}'.format(alt))
+            else:
+                decoders.append(alt)
+        return decoders
 
     def _make_connection(self, info):
         registered = app.server.register_callsign(info.connect_as)
@@ -589,18 +604,37 @@ class ConnectionPanel(urwid.WidgetWrap):
                 logger.debug('Unknown queue entry: {}'.format(kind))
         return result
 
+    def _decode_line(self, data):
+        for decoder in self._decoders:
+            try:
+                line = data.decode(decoder)
+            except UnicodeDecodeError:
+                continue
+            else:
+                break
+        else:
+            # While it is tempting to use 'backslashreplace' here, we need
+            # to use 'replace' to preserve widths. If a byte must be replaced
+            # because it cannot be decoded, replacing it with the string
+            # '\xhh' would mess up line layout on the terminal.
+            line = data.decode('utf-8', 'replace')
+        return line
+
     def _gather_lines(self, data):
-        if not isinstance(data, str):
-            data = data.decode('utf-8')
-        parts = data.split('\r')
+        # The text encodings we support all use the C0 control set, so it is
+        # safe to identify line breaks before decoding. This allows us to use
+        # one decoder per line, and avoid having fragments of a single line
+        # decoded with different decoders.
+        data = data.replace(b'\r\n', b'\r').replace(b'\n', b'\r')
+        parts = data.split(b'\r')
         if len(self._line_remains):
             parts[0] = self._line_remains + parts[0]
-            self._line_remains = ""
-        if data[-1] != '\r':
+            self._line_remains = b''
+        if data[-1] != b'\r':
             self._line_remains = parts[-1]
         del parts[-1]
         for part in parts:
-            self.add_line(part)
+            self.add_line(self._decode_line(part))
 
     def add_line(self, line):
         text = urwid.Text(line)

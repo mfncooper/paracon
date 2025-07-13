@@ -200,6 +200,41 @@ If you need to maintain multiple Paracon configurations - perhaps different
 setups for different servers, for example - you can do so simply by starting
 Paracon from a different directory for each configuration.
 
+Text encodings
+~~~~~~~~~~~~~~
+
+When connected to a remote site (e.g. a BBS), Paracon interprets the text it
+receives as UTF-8 encoded. In the overwhelming majority of circumstances, this
+works as expected. However, on very rare occasions, content may be received
+that was encoded using a different, non-compatible encoding. An example is
+old line drawings created using the original IBM PC character set.
+
+To allow for this, Paracon will try an alternate decoder if UTF-8 decoding
+fails on a given line of text. If the alternate also fails, Paracon will revert
+to UTF-8 but using the standard Unicode replacement character (�) in place of
+any problem characters.
+
+Why not allow for multiple alternate decoders? The problem is that it is not
+possible for Paracon to determine which alternate is the correct one, because
+the same character code may be a valid character in more than one alternate. As
+an example, the degree symbol (°) in the old Windows encoding is a light shaded
+box (░) in the original IBM PC encoding. The same character code (i.e. byte
+value) is valid in both encodings, but the characters themselves are different.
+
+By default, the alternate decoder is that for ``cp437``, which is the
+aforementioned original IBM PC encoding. It is possible to change this if you
+know for certain that you will be receiving content in a different encoding.
+To specify a different alternate, you need to edit your `paracon.cfg` file and
+add an entry like the following:
+
+.. code-block:: console
+
+    [Connect]
+    decode_alt = cp1252
+
+This example specifies that the old Windows encoding, ``cp1252``, should be
+used as the alternate decoder instead of the default ``cp437``.
+
 Logging
 -------
 

@@ -6,6 +6,7 @@ port = 0
 connect_as = 
 connect_to = 
 connect_via = 
+decode_alt = cp437
 
 [Unproto]
 port = 0
