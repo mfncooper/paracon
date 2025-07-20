@@ -23,7 +23,7 @@ Key features of Paracon include:
 **Author**: Martin F N Cooper, KD6YAM  
 **License**: MIT License
 
-### Limitations
+### Compatibility
 
 - Due to
   [limitations of the TUI library](https://github.com/urwid/urwid?tab=readme-ov-file#windows-support-notes)
