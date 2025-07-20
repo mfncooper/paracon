@@ -26,11 +26,26 @@ class Config:
         self.package = package
         self.default_cfg = None
         self.user_cfg = None
+        self.user_cfg_path = None
         self.callbacks = set()
         self.changed_sections = set()
         self.load_config()
 
-    def load_config(self):
+    def find_user_config(self, cfg_file):
+        if cfg_file:
+            cfg_path = pathlib.Path(cfg_file)
+            if cfg_path.exists():
+                return cfg_path
+        cfg_name = self.fileroot + '.cfg'
+        cfg_path = pathlib.Path.cwd() / cfg_name
+        if cfg_path.exists():
+            return cfg_path
+        cfg_path = pathlib.Path.home() / cfg_name
+        if cfg_path.exists():
+            return cfg_path
+        return None
+
+    def load_config(self, cfg_file=None):
         self.default_cfg = configparser.ConfigParser()
         if self.package:
             data = importlib.resources.read_text(
@@ -40,8 +55,9 @@ class Config:
             self.default_cfg.read(self.fileroot + '.def')
 
         self.user_cfg = configparser.ConfigParser()
-        if pathlib.Path(self.fileroot + '.cfg').exists():
-            self.user_cfg.read(self.fileroot + '.cfg')
+        self.user_cfg_path = self.find_user_config(cfg_file)
+        if self.user_cfg_path:
+            self.user_cfg.read(self.user_cfg_path)
         self.changed_sections = set()
 
     def save_config(self):
@@ -55,7 +71,9 @@ class Config:
                         and ucfg[section][key] == dcfg[section][key]):
                     ucfg.remove_option(section, key)
         # Save the updated user config
-        with open(self.fileroot + '.cfg', 'w') as f:
+        cfg_path = (self.user_cfg_path
+                    or pathlib.Path.cwd() / (self.fileroot + '.cfg'))
+        with open(cfg_path, 'w') as f:
             ucfg.write(f)
         self.notify_all()
         self.changed_sections = set()

@@ -62,7 +62,8 @@ server set up, see [References](#references) below for more information.
 
 Note that Paracon will create its configuration and log files in your *current
 directory* when you start it, not the directory in which the ``.pyz`` file is
-located.
+located. (However, see the User Guide for information on alternative
+locations.)
 
 To start Paracon, open a terminal window (Command Prompt or PowerShell on
 Windows), change directory to a suitable location for your configuration and

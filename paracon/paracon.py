@@ -8,9 +8,11 @@
 __author__ = 'Martin F N Cooper'
 __version__ = '1.1.0'
 
+import argparse
 import codecs
 from enum import Enum
 import logging
+import pathlib
 import re
 import sys
 import time
@@ -225,7 +227,7 @@ class MonitorPanel(urwid.WidgetWrap):
         self._queue = None
         self._periodic_key = None
         super().__init__(self._list)
-        self._log.set_logfile('monitor.log')
+        self._log.set_logfile(app.log_dir / 'monitor.log')
         urwid.connect_signal(app, 'server_started', self._start_monitor)
         urwid.connect_signal(app, 'server_stopping', self._stop_monitor)
 
@@ -571,7 +573,8 @@ class ConnectionPanel(urwid.WidgetWrap):
                     conn = self._connection
                     self._panel_changed_callback(self, conn)
                     self._log.set_logfile(
-                        '{}_{}.log'.format(conn.call_from, conn.call_to))
+                        app.log_dir
+                        / '{}_{}.log'.format(conn.call_from, conn.call_to))
                     self.add_line('Connected to {}'.format(conn.call_to))
                     self._menubar.menu.enable(
                         self.MenuCommand.DISCONNECT, True)
@@ -826,7 +829,16 @@ class Application(metaclass=urwid.MetaSignals):
         self._server = None
         self._ports = None
         self._debug_engine = False
-        self._configure_logging()
+        self._log_dir = pathlib.Path.cwd()
+
+    def set_log_dir(self, log_dir):
+        if log_dir:
+            self._log_dir = pathlib.Path(log_dir)
+            self._log_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def log_dir(self):
+        return self._log_dir
 
     def _configure_logging(self):
         # Read configured settings
@@ -840,7 +852,7 @@ class Application(metaclass=urwid.MetaSignals):
         # Create a file-based handler with format spec
         fmt = ("{asctime} [{name:11s}:{lineno:-4d}] "
                "[{levelname:7s}] {message}")
-        fh = logging.FileHandler('paracon.log')
+        fh = logging.FileHandler(self._log_dir / 'paracon.log')
         fh.setFormatter(logging.Formatter(fmt, '%Y-%m-%d %H:%M:%S', '{'))
 
         # Add to both loggers
@@ -1039,6 +1051,7 @@ class Application(metaclass=urwid.MetaSignals):
             raise urwid.ExitMainLoop()
 
     def run(self):
+        self._configure_logging()
         self._loop = urwid.MainLoop(
             self._create_widgets(),
             palette=self._palette,
@@ -1496,6 +1509,58 @@ class UnprotoDialog(urwidx.FormDialog):
 # Startup
 # =============================================================================
 
+def get_args():
+    class ConfigFileCheckAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            cfg_file = pathlib.Path(values)
+            if not cfg_file.is_file():
+                if cfg_file.exists():
+                    # If it exists but isn't a file, it's invalid
+                    raise argparse.ArgumentError(
+                        self, f'invalid config file: {values}')
+                try:
+                    # If it doesn't exist yet, make sure we can create it
+                    cfg_file.parent.mkdir(parents=True, exist_ok=True)
+                    cfg_file.touch()
+                except OSError:
+                    raise argparse.ArgumentError(
+                        self, f'cannot create config file: {values}')
+            setattr(namespace, self.dest, values)
+
+    class LogDirCheckAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            log_dir = pathlib.Path(values)
+            if not log_dir.is_dir():
+                if log_dir.exists():
+                    # If it exists but isn't a directory, it's invalid
+                    raise argparse.ArgumentError(
+                        self, f'invalid log directory: {values}')
+                try:
+                    # If it doesn't exist yet, make sure we can create it
+                    log_dir.mkdir(parents=True, exist_ok=True)
+                except OSError:
+                    raise argparse.ArgumentError(
+                        self, f'cannot create log directory: {values}')
+            setattr(namespace, self.dest, values)
+
+    parser = argparse.ArgumentParser(
+        description=f'Paracon packet radio console, version {__version__}',
+        epilog='Documentation is online at https://paracon.readthedocs.io/')
+    parser.add_argument(
+        '-c', '--config',
+        metavar='CONFIGFILE', default=None, action=ConfigFileCheckAction,
+        help='full path to configuration file (default: current directory)')
+    parser.add_argument(
+        '-l', '--logdir',
+        default=None, action=LogDirCheckAction,
+        help='full path to log file directory (default: current directory)')
+    parser.add_argument(
+        '-V', '--version',
+        action='version', version=f'Paracon {__version__}',
+        help='show version number and exit')
+    return parser.parse_args()
+
+
 # This could use some explanation. The config and app vars are created at the
 # top level so that they are accessible globally, without the need to use the
 # 'global' keyword. The run() function exists to provide an entry point for
@@ -1503,11 +1568,13 @@ class UnprotoDialog(urwidx.FormDialog):
 # applies when running the code outside of a zipapp, during development.
 
 config = config.Config('paracon', 'paracon_config')
-config.load_config()
 app = Application()
 
 
 def run():
+    args = get_args()
+    config.load_config(args.config)
+    app.set_log_dir(args.logdir)
     app.run()
 
 
