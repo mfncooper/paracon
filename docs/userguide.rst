@@ -244,6 +244,207 @@ add an entry like the following:
 This example specifies that the old Windows encoding, ``cp1252``, should be
 used as the alternate decoder instead of the default ``cp437``.
 
+Color themes
+~~~~~~~~~~~~
+
+Paracon's colors can be customized by adding a ``[Theme]`` section to your
+``paracon.cfg`` file. Each entry in this section overrides one of Paracon's
+named color attributes by name. Attributes you do not specify retain their
+default colors. Unrecognized attribute names are silently ignored.
+
+.. code-block:: ini
+
+    [Theme]
+    monitor_call = light red, black
+    monitor_own = light cyan, black
+    menu_key = light yellow,bold, dark blue
+
+Each entry takes the form::
+
+    attribute_name = foreground, background
+
+The foreground and background are separated by a comma followed by a space
+(``", "``). The foreground may include text modifiers joined with a plain
+comma and no space, for example ``light cyan,bold`` or
+``white,bold,underline``. The full form with a modifier therefore looks
+like::
+
+    menu_key = light cyan,bold, dark blue
+
+If you want to change only the foreground while keeping the default background,
+you may omit the background value entirely (no trailing comma)::
+
+    attribute_name = foreground
+
+The following tables list all named attributes that can be overridden, along
+with their default colors.
+
+*Interface elements*
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 20 20 35
+
+   * - Attribute
+     - Default foreground
+     - Default background
+     - Controls
+   * - ``menu_key``
+     - ``light cyan,bold``
+     - ``dark blue``
+     - Highlighted shortcut letter in each menu command
+   * - ``menu_text``
+     - ``white``
+     - ``dark blue``
+     - Regular menu bar text
+   * - ``tabbar_unsel``
+     - ``black``
+     - ``light gray``
+     - Unselected connection tabs
+   * - ``tabbar_sel``
+     - ``white,bold``
+     - ``black``
+     - The currently selected connection tab
+   * - ``dropdown_item``
+     - ``white``
+     - ``dark blue``
+     - Items in a drop-down list
+   * - ``dropdown_sel``
+     - ``yellow,bold``
+     - ``dark blue``
+     - The currently highlighted drop-down item
+   * - ``button_select``
+     - ``white``
+     - ``black``
+     - Dialog buttons
+   * - ``button_focus``
+     - ``black``
+     - ``light gray``
+     - The currently focused dialog button
+   * - ``dialog_back``
+     - ``white``
+     - ``dark blue``
+     - Dialog background
+   * - ``dialog_header``
+     - ``black``
+     - ``light gray``
+     - Dialog title bar
+   * - ``field_error``
+     - ``light red``
+     - ``dark blue``
+     - Validation error messages in dialogs
+
+*Windows*
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 20 20 35
+
+   * - Attribute
+     - Default foreground
+     - Default background
+     - Controls
+   * - ``window_norm``
+     - ``light gray``
+     - ``black``
+     - Unfocused window border
+   * - ``window_sel``
+     - ``yellow``
+     - ``black``
+     - Focused window border
+
+*Monitor panel*
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 20 20 35
+
+   * - Attribute
+     - Default foreground
+     - Default background
+     - Controls
+   * - ``monitor_text``
+     - ``white``
+     - ``black``
+     - Body text of monitor entries
+   * - ``monitor_call``
+     - ``light green``
+     - ``black``
+     - Callsigns in received unproto frames
+   * - ``monitor_own``
+     - ``light magenta``
+     - ``black``
+     - Your own transmitted frames
+   * - ``monitor_relayed``
+     - ``yellow``
+     - ``black``
+     - Digipeaters that have relayed a packet and that we heard (those marked with ``*``)
+   * - ``monitor_frame``
+     - ``dark cyan``
+     - ``black``
+     - Frame type descriptor and timestamp (e.g. ``<UI pid=F0 Len=36 PF=0 >``, ``[21:52:43]``)
+
+*Connection and Unproto panels*
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 20 20 35
+
+   * - Attribute
+     - Default foreground
+     - Default background
+     - Controls
+   * - ``connection_inbound``
+     - ``light cyan``
+     - ``black``
+     - Inbound connection status messages
+   * - ``connection_outbound``
+     - ``light magenta``
+     - ``black``
+     - Outbound connection status messages
+   * - ``connection_error``
+     - ``light red``
+     - ``black``
+     - Connection error messages
+   * - ``unproto_error``
+     - ``light red``
+     - ``black``
+     - Unproto error messages
+   * - ``entry_line``
+     - ``white``
+     - ``black``
+     - The text entry line at the bottom of the panel
+
+Available colors
+^^^^^^^^^^^^^^^^
+
+The 16 standard **foreground** colors are:
+
+    ``black``, ``dark red``, ``dark green``, ``brown``, ``dark blue``,
+    ``dark magenta``, ``dark cyan``, ``light gray``, ``dark gray``,
+    ``light red``, ``light green``, ``yellow``, ``light blue``,
+    ``light magenta``, ``light cyan``, ``white``
+
+The 8 standard **background** colors are:
+
+    ``black``, ``dark red``, ``dark green``, ``brown``, ``dark blue``,
+    ``dark magenta``, ``dark cyan``, ``light gray``
+
+For both foreground and background, the special value ``default`` instructs
+Paracon to use the terminal's own default color.
+
+Text modifiers may be appended to a foreground color with a comma:
+``bold``, ``underline``, ``standout``, ``italics``, ``blink``,
+``strikethrough``. For example, ``light cyan,bold`` or
+``white,bold,underline``.
+
+If your terminal supports 256 colors, high-color values of the form
+``h0``–``h255`` may be used, along with color-cube shortcuts such as
+``#000``–``#fff`` and grayscale entries such as ``g0``–``g100``. Terminals
+with 24-bit (true color) support also accept full hex codes in the form
+``#rrggbb``. Support for these extended color formats varies across terminal
+programs.
+
 .. _cli-options:
 
 Command-line options

@@ -18,6 +18,7 @@ via =
 port = -1
 color = true
 netrom = true
+dedup = true
 
 [Logging]
 logdir = .
