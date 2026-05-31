@@ -1,0 +1,37 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Update version in source
+        run: |
+          sed -i "s/__version__ = '.*'/__version__ = '${{ steps.version.outputs.VERSION }}'/" paracon/paracon.py
+
+      - name: Build zipapp
+        run: bash build_zipapp.sh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: paracon_${{ steps.version.outputs.VERSION }}.pyz
+          generate_release_notes: true

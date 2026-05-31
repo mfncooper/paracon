@@ -81,6 +81,10 @@ Navigation
    - Alt-\- or Alt-r removes a connection tab
    - Alt-<digit> switches to the numbered tab
 
+   **Unproto / APRS Messages**
+
+   - Shift-Up recalls the last sent message into the entry field
+
 
 Connections
 -----------
@@ -133,7 +137,8 @@ system, is also shown in this panel.
 
 The Monitor panel shows all traffic seen on the AGWPE port. This includes the
 traffic from your connected-mode session, and also any other traffic seen on
-the same frequency.
+the same frequency. Frames that you transmitted yourself are highlighted in a
+distinct color so that your own traffic is easy to pick out at a glance.
 
 Managing connections
 ~~~~~~~~~~~~~~~~~~~~
@@ -161,7 +166,9 @@ messages too.
    :alt: Unproto window
 
 Whatever you enter on the text entry line at the bottom will be sent out when
-you hit the Return or Enter key.
+you hit the Return or Enter key. If you need to resend or edit a previous
+message, press Shift-Up when the entry field is empty to recall the last sent
+message.
 
 The indicator on the bottom right shows the current configuration that will be
 used for each message sent. To change this, use the Dest/Src command to bring
@@ -184,6 +191,41 @@ The 'Port' field is a drop-down list of the available AGWPE ports on your
 server. Click on the down-arrow to open the list. In many cases, you will have
 only one available port, and can leave this field as it is. If your server
 provides multiple ports, you can select the appropriate one here.
+
+APRS Messages
+-------------
+
+The Messages window provides a dedicated interface for sending and receiving
+APRS direct messages. It is accessible from the top menu once you are connected
+to your AGWPE server.
+
+APRS messages are sent as Unproto UI frames addressed to the configured APRS
+destination (``APICON`` by default), with the payload formatted according to
+the APRS messaging specification. Incoming APRS messages are picked up from
+the monitor stream and displayed here automatically.
+
+To configure the source callsign, destination, recipient callsign (``To``),
+via path, and port, use the Dest/Src command to bring up the APRS Messages
+dialog.
+
+The status bar at the bottom of the window shows the current configuration:
+From, Dest, and To callsigns, and any Via path.
+
+**Sending messages**
+
+Type your message in the entry field and press Return or Enter to send it.
+Each message is assigned a sequential message number. Sent messages are shown
+in yellow; received messages are shown in cyan.
+
+If you need to resend or edit a previous message, press Shift-Up when the
+entry field is empty to recall the last sent message.
+
+**Receiving messages and acknowledgements**
+
+Paracon automatically sends an acknowledgement (ACK) for every incoming APRS
+message that is addressed to your configured source callsign and that carries
+a message number. Duplicate messages (same sender and message number) are
+suppressed. ACKs sent are shown in green; error conditions are shown in red.
 
 .. _settings:
 
@@ -283,3 +325,7 @@ monitor.log
    Contains the exchange that occurs during a connection between the two
    stations of the filename. This is the same information that you see in the
    connection tab during a connected-mode session.
+
+aprs_messages.log
+   Contains the same information as the APRS Messages window, preserving
+   sent and received messages across Paracon sessions.

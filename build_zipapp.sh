@@ -17,8 +17,8 @@ cp -p paracon/*.def $APPDIR/paracon_config/
 touch $APPDIR/paracon_config/__init__.py
 
 # Install dependencies
-python -m pip install -r requirements-zipapp.txt --target $APPDIR/
+python3 -m pip install -r requirements-zipapp.txt --target $APPDIR/
 
 # Build the zipapp and make it executable
-python -m zipapp $APPDIR/ -p '/usr/bin/env python3' -o paracon_${VER}.pyz -m "paracon:run"
+python3 -m zipapp $APPDIR/ -p '/usr/bin/env python3' -o paracon_${VER}.pyz -m "paracon:run"
 chmod a+x paracon_${VER}.pyz

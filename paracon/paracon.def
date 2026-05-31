@@ -14,6 +14,13 @@ source =
 destination = ID
 via = 
 
+[AprsMessages]
+port = 0
+source = 
+destination = APICON
+to = 
+via = 
+
 [Monitor]
 port = -1
 color = true
