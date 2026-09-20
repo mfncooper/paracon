@@ -22,6 +22,7 @@ import urwid
 import ax25
 import ax25.netrom
 import config
+from linegather import LineGatherer
 import pserver
 import urwidx
 
@@ -440,7 +441,9 @@ class ConnectionPanel(urwid.WidgetWrap):
         self._decoders = self._init_decoders()
         self._timer_key = None
         self._periodic_key = None
-        self._line_remains = ''
+        self._line_gatherer = LineGatherer()
+        self._partial_widget = None
+        self._auto_scroll = True
         self._log = urwidx.LoggingDequeListWalker([])
         self._list = SizeListBox(self._log)
         self._menubar = urwidx.MenuBar(self.MenuCommand)
@@ -547,9 +550,43 @@ class ConnectionPanel(urwid.WidgetWrap):
                     ('connection_error', 'AGWPE server has disconnected'))
                 app.server_disappeared()
             else:
-                self.add_line(('connection_outbound', text))
+                self._echo_sent_text(text)
         else:
             self.add_line(('connection_error', 'Not connected'))
+
+    def _echo_sent_text(self, text):
+        # Echo what was typed onto the end of the line currently pending
+        # from incoming data - e.g. a prompt - the way a real terminal
+        # echoes input, rather than as a separate line below it. Pressing
+        # Return always ends that line, whether or not the remote host
+        # echoes input or terminates the line itself; otherwise, whatever
+        # the remote sends next could be silently appended to it.
+        remains = self._line_gatherer.flush()
+        widget = self._partial_widget
+        if widget is not None:
+            prompt = self._decode_line(remains)
+            widget.original_widget.set_text(
+                [('connection_inbound', prompt),
+                 ('connection_outbound', text)])
+            self._log.write_log(widget)
+            self._partial_widget = None
+            self._follow_bottom()
+        else:
+            self.add_line(('connection_outbound', text))
+
+    def _finalize_pending_line(self):
+        remains = self._line_gatherer.flush()
+        if remains:
+            self._update_incoming_line(self._decode_line(remains), True)
+
+    def _follow_bottom(self):
+        if self._auto_scroll:
+            self._list.set_focus(len(self._log) - 1, 'above')
+            # set_focus() alone has no effect once this widget is already
+            # the focus. set_focus_valign always recalculates the scroll
+            # offset from the widget's current height, so it keeps
+            # following the line even as it grows.
+            self._list.set_focus_valign('bottom')
 
     def _handle_menu_command(self, cmd):
         if cmd is self.MenuCommand.CONNECT:
@@ -599,6 +636,7 @@ class ConnectionPanel(urwid.WidgetWrap):
                         else:
                             message = 'Disconnected'
                     self.add_line(message)
+                    self._finalize_pending_line()
                     self._log.set_logfile(None)
                     self._menubar.menu.enable(
                         self.MenuCommand.CONNECT, True)
@@ -628,22 +666,46 @@ class ConnectionPanel(urwid.WidgetWrap):
         return line
 
     def _gather_lines(self, data):
-        # The text encodings we support all use the C0 control set, so it is
-        # safe to identify line breaks before decoding. This allows us to use
-        # one decoder per line, and avoid having fragments of a single line
-        # decoded with different decoders.
-        data = data.replace(b'\r\n', b'\r').replace(b'\n', b'\r')
-        parts = data.split(b'\r')
-        if len(self._line_remains):
-            parts[0] = self._line_remains + parts[0]
-            self._line_remains = b''
-        if data[-1] != b'\r':
-            self._line_remains = parts[-1]
-        del parts[-1]
-        for part in parts:
-            self.add_line(self._decode_line(part))
+        for part, final in self._line_gatherer.feed(data):
+            self._update_incoming_line(self._decode_line(part), final)
+
+    def _update_incoming_line(self, line, final):
+        if self._partial_widget is not None:
+            # Update the previously displayed unterminated line in place,
+            # rather than displaying it again as a new line. Note that we
+            # deliberately do NOT re-check ends_visible() here: as a long
+            # line grows, it can end up taller than the viewport on its
+            # own, at which point ends_visible() would report that the
+            # bottom is no longer visible even though nothing has scrolled
+            # - which would wrongly and permanently disable auto-scroll
+            # for exactly the long lines that most need it. Instead, we
+            # stick with whatever auto-scroll decision was made when this
+            # line first appeared.
+            self._partial_widget.original_widget.set_text(line)
+            widget = self._partial_widget
+        else:
+            # Save the state of visibility before adding new content
+            ends_visible = self._list.ends_visible(self._list.size)
+            self._auto_scroll = 'bottom' in ends_visible
+            widget = urwid.AttrMap(urwid.Text(line), 'connection_inbound')
+            self._log.append(widget, log=False)
+        if final:
+            self._log.write_log(widget)
+            self._partial_widget = None
+        else:
+            self._partial_widget = widget
+        # Auto-scroll only if the last entry was visible when this line
+        # first appeared (i.e. the user has not scrolled up to view
+        # earlier entries)
+        self._follow_bottom()
 
     def add_line(self, line):
+        # Note that a pending unterminated incoming line (self._partial_
+        # widget) is deliberately left untouched here. It stays associated
+        # with its widget, wherever that ends up in the list, so that it is
+        # updated in place whenever the remote host eventually terminates
+        # it - even if other lines, such as this one, have been added in
+        # the meantime.
         text = urwid.Text(line)
         if type(line) is str:
             text = urwid.AttrMap(text, 'connection_inbound')

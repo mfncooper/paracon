@@ -167,8 +167,12 @@ class LoggingDequeListWalker(DequeListWalker):
     def set_logfile(self, filename):
         self._logfile = filename
 
-    def append(self, item):
+    def append(self, item, log=True):
         super().append(item)
+        if log:
+            self.write_log(item)
+
+    def write_log(self, item):
         if self._logfile:
             text = self._plain_text(item)
             if text == '' or text[-1] != '\n':
